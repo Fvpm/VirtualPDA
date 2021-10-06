@@ -87,7 +87,7 @@ class Group(DataObjects):
         self.description = newdesc
         
     def remUser(self, memind):
-        self.members.pop(memind)
+        self.members.remove(memind)
         
     def editName(self, newname):
         self.name = newname
