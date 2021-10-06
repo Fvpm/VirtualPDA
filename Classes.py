@@ -7,28 +7,34 @@ class GUIManager(object):
     def __init__(self):
         self.currentWindow = ""
 
-        
 
-class LoginGUI(object):
-    def __init__(self):
-        window = Tk()
-        window.geometry("600x400")
+class AbstractGUI(object):
+    def __init__(self, managerList):
+        self.userManager = managerList[0]
+        self.noteManager = managerList[1]
+        self.groupManager = managerList[2]
+        self.guiManager = managerList[3]
+        self.databaseManager = managerList[4]
 
-        buttonFrame = Frame(master=window, height=150, bg="red")
+
+class LoginGUI(AbstractGUI):
+    def __init__(self, managerList):
+        super.__init__(managerList)
+        self.window = Tk()
+        self.window.geometry("600x400")
+
+        buttonFrame = Frame(master=self.window, height=150, bg="red")
         buttonFrame.pack(fill=BOTH, side=BOTTOM, expand=True)
 
-        labelFrame = Frame(master=window, height=250, bg="blue")
+        labelFrame = Frame(master=self.window, height=250, bg="blue")
         labelFrame.pack(fill=BOTH, side=TOP, expand=True)
 
-
-
-
-        loginButton = 
         
-        window.mainloop()
+        self.window.mainloop()
 
     def loginRequest(self):
         #TODO sends validity check to UserManager. Popup appears if failure, otherwise this window closes and MainGUI
+        pass
 
 #class registerGUI(object):
 #    def __init__(self):
