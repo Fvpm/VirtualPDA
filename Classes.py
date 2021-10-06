@@ -3,6 +3,11 @@
 
 from tkinter import *
 
+class GUIManager(object):
+    def __init__(self):
+        self.currentWindow = ""
+
+        
 
 class LoginGUI(object):
     def __init__(self):
@@ -14,8 +19,16 @@ class LoginGUI(object):
 
         labelFrame = Frame(master=window, height=250, bg="blue")
         labelFrame.pack(fill=BOTH, side=TOP, expand=True)
+
+
+
+
+        loginButton = 
         
         window.mainloop()
+
+    def loginRequest(self):
+        #TODO sends validity check to UserManager. Popup appears if failure, otherwise this window closes and MainGUI
 
 #class registerGUI(object):
 #    def __init__(self):
