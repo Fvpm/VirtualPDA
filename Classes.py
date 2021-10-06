@@ -25,6 +25,7 @@ class Note(DataObjects):
         self.tags = [tag]
         
     def edit(self, entertext):
+        """Currently only allows adding to text, will eventually allow for full editing of text"""
         self.text += entertext
         
     def delete(self):
