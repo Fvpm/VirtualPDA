@@ -52,7 +52,7 @@ class User(DataObjects):
             return False
         
     def createNote(self, date, entry):
-        newnote=Note(self, self.id, date, date, entry)
+        newnote=Note(self.id, self, date, date, entry, "", 0, "", "", False, "")
         self.notes.append(newnote)
         
     def changeUser(self, newusername):
@@ -64,7 +64,7 @@ class User(DataObjects):
         
     def createGroup(self, groupname, desc):
         """Create a new group"""
-        newgroup = Group(groupname, desc, self.id)
+        newgroup = Group(groupname, desc, self)
         self.group.append(newgroup)
         
     def leaveGroup(self, groupid):
