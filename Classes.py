@@ -45,11 +45,35 @@ class LoginGUI(AbstractGUI):
         buttonFrame = Frame(master=self.window, height=150, bg="red")
         buttonFrame.pack(fill=BOTH, side=BOTTOM, expand=True)
 
-        labelFrame = Frame(master=self.window, height=250, bg="blue")
-        labelFrame.pack(fill=BOTH, side=TOP, expand=True)
+        entryFrame = Frame(master=self.window, height=250, bg="blue")
+        entryFrame.pack(fill=BOTH, side=TOP, expand=True)
         
         self.window.mainloop()
 
+        registerButton = Button(buttonFrame, text = "Register", command = self.register)
+        registerButton.pack()
+        loginButton = Button(buttonFrame, text = "Login", command = self.login)
+        loginButton.pack()
+        guestButton = Button(buttonFrame, text = "Guest", command = self.guestLogin)
+        guestButton.pack()
+
+        userNameFrame = Frame(entryFrame)
+        userNameFrame.pack()
+        userNameLabel = Label(userNameFrame, text = "Username:")
+        userNameLabel.pack(side=LEFT)
+        userNameEntry = Entry(userNameFrame)
+        userNameEntry.pack(side=RIGHT)
+
+        passwordFrame = Frame(entryFrame)
+        passwordFrame.pack()
+        passwordLabel = Label(passwordFrame, text = "Password:")
+        passwordLabel.pack(side=LEFT)
+        passwordEntry = Entry(passwordFrame)
+        passwordEntry.pack(side=RIGHT)
+        
+
+    def register(self):
+        self.guiManager.openWindow("register")
 
     def loginRequest(self):
         #TODO sends validity check to UserManager. Popup appears if failure, otherwise this window closes and MainGUI
