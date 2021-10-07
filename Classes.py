@@ -81,9 +81,7 @@ class GroupManager(object):
 class GUIManager(object):
     def __init__(self):
         self.currentWindow = None
-        self.root = Tk()
-        self.root.deiconify()
-        self.root.mainloop()
+        self.guiDict = {}
 
     def setManagers(self, _databaseManager, _userManager, _noteManager, _groupManager):
         """Because Managers have to be made all at once and reference each other, this function is called when this object is created on startup but after all managers are initalized"""
@@ -93,31 +91,49 @@ class GUIManager(object):
         self.noteManager = _noteManager
         self.managerList = [self.userManager , self.noteManager, self.groupManager, self, self.databaseManager]
 
+    def startupGUI(self):
+        self.root = Tk()
+        self.root.withdraw()
+
+        self.guiDict["login"] = LoginGUI(self.managerList, self.root)
+        self.guiDict["register"] = RegisterGUI(self.managerList, self.root)
+
+        self.openWindow("login")
+
+        self.root.mainloop()
+
     def openWindow(self, keyword):
-        if(currentWindow != None):
-            currentWindow.close()
-            currentWindow = None
-        if(keyword == "login"):
-            currentWindow = LoginGui(self.managerList, self.root)
+        if(self.currentWindow != None):
+            self.currentWindow.hide()
+        self.currentWindow = self.guiDict[keyword]
+        self.currentWindow.show()
+    def end(self):
+        self.root.destroy()
 
 #GUIs (view)
 
 class AbstractGUI(object):
-    def __init__(self, managerList, parentWindow):
+    def __init__(self, managerList, parent):
         self.userManager = managerList[0]
         self.noteManager = managerList[1]
         self.groupManager = managerList[2]
         self.guiManager = managerList[3]
         self.databaseManager = managerList[4]
-        self.window = Toplevel(parent)
-    def close(self):
-        self.window.destroy()
-        self.window.update()
+        self.window = Toplevel()
+        self.window.withdraw()
+        self.window.protocol("WM_DELETE_WINDOW",self.onClose)
+    def show(self):
+        self.window.deiconify()
+
+    def hide(self):
+        self.window.withdraw()
+    def onClose(self):
+        self.guiManager.end()
 
 
 class LoginGUI(AbstractGUI):
-    def __init__(self, managerList, parentWindow):
-        super.__init__(managerList, parentWindow)
+    def __init__(self, managerList, parent):
+        super().__init__(managerList, parent)
 
         self.window.geometry("600x400")
 
@@ -127,15 +143,19 @@ class LoginGUI(AbstractGUI):
         labelFrame = Frame(master=self.window, height=250, bg="blue")
         labelFrame.pack(fill=BOTH, side=TOP, expand=True)
         
-        self.window.mainloop()
+        registerButton = Button(buttonFrame, text = "register", command = self.register)
+        registerButton.pack(side=BOTTOM)
+        
+
+    def register(self):
+        self.guiManager.openWindow("register")
 
 
-    def loginRequest(self):
-        #TODO sends validity check to UserManager. Popup appears if failure, otherwise this window closes and MainGUI opens
-        pass
+class RegisterGUI(AbstractGUI):
+    def __init__(self, managerList, parent):
+        super().__init__(managerList, parent)
+        self.window.geometry("400x700")
 
-#class registerGUI(object):
-#    def __init__(self):
         
 
 #Data Objects (model)
@@ -240,44 +260,3 @@ class Group(DataObjects):
         
     def delete(self):
         """Delete the group"""
-        
-def main():
-    user1 = User("Jason", "x1pho3nc0rp")
-    user2 = User("Kylie", "t3n3m4n")
-    note1 = Note(user1, user1, "0", "0", "", "0", 3, "Alexander Fails", "Red", False, "Junk")
-    group1 = Group("Alexander Fan Club", "For people who love Alexander the Great", user1)
-    
-    print(user1.checkPass("x1pho3nc0rp"))
-    user1.changePass("sh4d0wKn1gh7")
-    user1.changeUser("Alex")
-    print(user1.password)
-    print(user1.username)
-    user1.joinGroup(group1)
-    print(user1.groups)
-    user1.leaveGroup(group1)
-    print(user1.groups)
-    #print(user1.notes)
-    #user1.createNote("0", "Behold the Empire")
-    #print(user1.notes)
-    user1.createGroup("Titanic", "For those who love Titanic")
-    user1.joinGroup(group1)
-    print(user1.groups)
-    group1.addUser(user2)
-    print(group1.members)
-    group1.remUser(user1)
-    print(group1.members)
-    group1.editName("Rolling")
-    group1.editDesc("For those who want to roll dice")
-    print(group1.description)
-    print(group1.name)
-    print(group1.isPrivate)
-    group1.togglePrivacy()
-    print(group1.isPrivate)
-    print(note1.vis)
-    note1.share(user2)
-    print(note1.vis)
-    note1.edit("The cake is a lie")
-    print(note1.text)
-    
-
-main()
