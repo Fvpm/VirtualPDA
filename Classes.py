@@ -1,45 +1,159 @@
 """
 Currently coded for Python only, not coded to work with database
-
 """
-
 from tkinter import *
 
-#Managers
 
-class UserManager(object):
-    pass
+
+#Managers (controllers)
+
+
 
 class DatabaseManager(object):
-    pass
+    def __init__(self):
+        """Initialize connection to mySQL database"""
+    def startup(self) -> list:
+        """Creates managers and loads in their data from database. Returns list of [userManager, noteManager, groupManger, and guiManager]"""
+        self.groupManager = GroupManager()
+        self.userManager = UserManager()
+        self.noteManager = NoteManager()
+        self.guiManager = GUIManager()
 
-class GroupManager(object):
-    pass
+        #set all managers to reference each other
+        self.groupManager.setManagers(self, self.userManager, self.noteManager, self.guiManager)
+        self.userManager.setManagers(self, self.groupManager, self.noteManager, self.guiManager)
+        self.noteManager.setManagers(self, self.userManager, self.groupManager, self.guiManager)
+        self.guiManager.setManagers(self, self.userManager, self.noteManager, self.groupManager)
+
+        #load data from database
+        self.loadUsers()
+        self.loadNotes()
+        self.loadGroups()
+        return [self.userManager, self.noteManager, self.groupManager, self.guiManager]
+
+    def loadUsers(self):
+        """Will load user data into self.userManager"""
+        pass
+
+    def loadNotes(self):
+        """Will load database data into self.noteManager"""
+        pass
+
+    def loadGroups(self):
+        """Will load database data into self.groupManager"""
+        pass
+
+
+class UserManager(object):
+    def __init__(self):
+        self.userList = []
+        self.currentUser = None;
+    def setManagers(self, _databaseManager, _groupManager, _noteManager, _guiManager):
+        """Because Managers have to be made all at once and reference each other, this function is called when this object is created on startup but after all managers are initalized"""
+        self.databaseManager = _databaseManager
+        self.userManager = _groupManager
+        self.noteManager = _noteManager
+        self.guiManager = _guiManager
+
 
 class NoteManager(object):
-    pass
+    def __init__(self):
+        self.noteList = []
+    def setManagers(self, _databaseManager, _userManager, _groupManager, _guiManager):
+        """Because Managers have to be made all at once and reference each other, this function is called when this object is created on startup but after all managers are initalized"""
+        self.databaseManager = _databaseManager
+        self.userManager = _userManager
+        self.groupManager = _groupManager
+        self.guiManager = _guiManager    
+
+
+class GroupManager(object):
+    def __init__(self):
+        self.groupList = []
+    def setManagers(self, _databaseManager, _userManager, _noteManager, _guiManager):
+        """Because Managers have to be made all at once and reference each other, this function is called when this object is created on startup but after all managers are initalized"""
+        self.databaseManager = _databaseManager
+        self.userManager = _userManager
+        self.noteManager = _noteManager
+        self.guiManager = _guiManager
+
 
 class GUIManager(object):
     def __init__(self):
-        self.currentWindow = ""
-    def setManagers(self, userManager, databaseManager)
-        pass
+        self.currentWindow = None
+        self.guiDict = {}
 
-#GUIs
+    def setManagers(self, _databaseManager, _userManager, _noteManager, _groupManager):
+        """Because Managers have to be made all at once and reference each other, this function is called when this object is created on startup but after all managers are initalized"""
+        self.userManager = _userManager
+        self.databaseManager = _databaseManager
+        self.groupManager = _groupManager
+        self.noteManager = _noteManager
+        self.managerList = [self.userManager , self.noteManager, self.groupManager, self, self.databaseManager]
+
+    def startupGUI(self):
+        """This is run once to start up tkinter. It creates all windows as Toplevels that are children of a perepetually unused Tk, and then starts with opening the login window."""
+        self.root = Tk()
+        self.root.withdraw()
+
+        self.guiDict["login"] = LoginGUI(self.managerList, self.root)
+        self.guiDict["register"] = RegisterGUI(self.managerList, self.root)
+
+        self.openWindow("login")
+
+        self.root.mainloop()
+
+    def openWindow(self, keyword):
+        """Switches windows by hiding the current one and showing the requested"""
+        if(self.currentWindow != None):
+            self.currentWindow.hide()
+
+        if(keyword in self.guiDict.keys()):
+            self.currentWindow = self.guiDict[keyword]
+            self.currentWindow.show()
+        else:
+            #This shouldn't ever print in production but if it does it should be helpful.
+            print("Incorrect keyword sent to guiManager.openWindow(keyword) . Incorrect keyword: \"" + keyword + "\" not found in guiDict")
+
+        
+    def end(self):
+        """Ends the tkinter program. Is called when x on any window is pressed"""
+        self.root.destroy()
+
+
+
+
+#GUIs (view)
+
+
+
 
 class AbstractGUI(object):
-    def __init__(self, managerList):
+    """Parent class of all main GUI windows. Does not include popups"""
+    def __init__(self, managerList, parent):
         self.userManager = managerList[0]
         self.noteManager = managerList[1]
         self.groupManager = managerList[2]
         self.guiManager = managerList[3]
         self.databaseManager = managerList[4]
+        self.window = Toplevel()
+        self.window.withdraw()
+        self.window.protocol("WM_DELETE_WINDOW",self.onClose)
+
+    def show(self):
+        self.window.deiconify()
+
+    def hide(self):
+        self.window.withdraw()
+
+    def onClose(self):
+        self.guiManager.end()
 
 
 class LoginGUI(AbstractGUI):
-    def __init__(self, managerList):
-        super.__init__(managerList)
-        self.window = Tk()
+    def __init__(self, managerList, parent):
+        super().__init__(managerList, parent)
+
         self.window.geometry("600x400")
 
         buttonFrame = Frame(master=self.window, height=150, bg="red")
@@ -47,8 +161,6 @@ class LoginGUI(AbstractGUI):
 
         entryFrame = Frame(master=self.window, height=250, bg="blue")
         entryFrame.pack(fill=BOTH, side=TOP, expand=True)
-        
-        self.window.mainloop()
 
         registerButton = Button(buttonFrame, text = "Register", command = self.register)
         registerButton.pack()
@@ -75,13 +187,28 @@ class LoginGUI(AbstractGUI):
     def register(self):
         self.guiManager.openWindow("register")
 
-    def loginRequest(self):
-        #TODO sends validity check to UserManager. Popup appears if failure, otherwise this window closes and MainGUI
+    def login(self):
         pass
 
-#class registerGUI(object):
-#    def __init__(self):
+    def guestLogin(self):
+        pass
+
+
+class RegisterGUI(AbstractGUI):
+    def __init__(self, managerList, parent):
+        super().__init__(managerList, parent)
+        self.window.geometry("400x700")
         
+        backButton = Button(self.window, text = "<-", command = self.backToLogin)
+        backButton.pack(side = TOP, anchor = "nw")
+
+    def backToLogin(self):
+        self.guiManager.openWindow("login")
+
+
+
+#Data Objects (model)
+
 
 
 class DataObjects(object):
@@ -89,7 +216,8 @@ class DataObjects(object):
         self.id = ident
         self.update = False
         self.mark = False
-        
+
+
 class Note(DataObjects):
     
     def __init__(self, own, visib, made, mod, memo, eday, impor, name, col, repeat, tag):
@@ -115,7 +243,8 @@ class Note(DataObjects):
     def share(self, shareuser):
         """share note with other users"""
         self.vis.append(shareuser)
-        
+
+
 class User(DataObjects):
     def __init__(self, intuse, intpass):
         self.username = intuse
@@ -153,7 +282,8 @@ class User(DataObjects):
         
     def delete(self):
         """delete the user"""
-    
+
+
 class Group(DataObjects):
     def __init__(self, groupname, desc, own):
         self.name = groupname
@@ -183,44 +313,3 @@ class Group(DataObjects):
         
     def delete(self):
         """Delete the group"""
-        
-def main():
-    user1 = User("Jason", "x1pho3nc0rp")
-    user2 = User("Kylie", "t3n3m4n")
-    note1 = Note(user1, user1, "0", "0", "", "0", 3, "Alexander Fails", "Red", False, "Junk")
-    group1 = Group("Alexander Fan Club", "For people who love Alexander the Great", user1)
-    
-    print(user1.checkPass("x1pho3nc0rp"))
-    user1.changePass("sh4d0wKn1gh7")
-    user1.changeUser("Alex")
-    print(user1.password)
-    print(user1.username)
-    user1.joinGroup(group1)
-    print(user1.groups)
-    user1.leaveGroup(group1)
-    print(user1.groups)
-    #print(user1.notes)
-    #user1.createNote("0", "Behold the Empire")
-    #print(user1.notes)
-    user1.createGroup("Titanic", "For those who love Titanic")
-    user1.joinGroup(group1)
-    print(user1.groups)
-    group1.addUser(user2)
-    print(group1.members)
-    group1.remUser(user1)
-    print(group1.members)
-    group1.editName("Rolling")
-    group1.editDesc("For those who want to roll dice")
-    print(group1.description)
-    print(group1.name)
-    print(group1.isPrivate)
-    group1.togglePrivacy()
-    print(group1.isPrivate)
-    print(note1.vis)
-    note1.share(user2)
-    print(note1.vis)
-    note1.edit("The cake is a lie")
-    print(note1.text)
-    
-
-main()
