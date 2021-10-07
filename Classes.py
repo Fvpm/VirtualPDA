@@ -196,7 +196,7 @@ class LoginGUI(AbstractGUI):
     def login(self):
         userName = self.userNameEntry.get()
         password = self.passwordEntry.get()
-        success = self.userManager.login(username,password)
+        success = self.userManager.login(userName,password)
         if success:
             self.guiManager.openWindow("home")
         else:
