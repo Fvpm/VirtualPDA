@@ -3,9 +3,22 @@
 
 from tkinter import *
 
+class UserManager(object):
+    pass
+
+class DatabaseManager(object):
+    pass
+
+class GroupManager(object):
+    pass
+
+class NoteManager(object):
+    pass
+
 class GUIManager(object):
     def __init__(self):
         self.currentWindow = ""
+    def setManagers(self, userManager, databaseManager, 
 
 
 class AbstractGUI(object):
@@ -28,9 +41,9 @@ class LoginGUI(AbstractGUI):
 
         labelFrame = Frame(master=self.window, height=250, bg="blue")
         labelFrame.pack(fill=BOTH, side=TOP, expand=True)
-
         
         self.window.mainloop()
+
 
     def loginRequest(self):
         #TODO sends validity check to UserManager. Popup appears if failure, otherwise this window closes and MainGUI
