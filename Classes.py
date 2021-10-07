@@ -80,29 +80,45 @@ class GroupManager(object):
 
 class GUIManager(object):
     def __init__(self):
-        self.currentWindow = ""
+        self.currentWindow = None
+        self.root = Tk()
+        self.root.deiconify()
+        self.root.mainloop()
+
     def setManagers(self, _databaseManager, _userManager, _noteManager, _groupManager):
         """Because Managers have to be made all at once and reference each other, this function is called when this object is created on startup but after all managers are initalized"""
         self.userManager = _userManager
         self.databaseManager = _databaseManager
         self.groupManager = _groupManager
         self.noteManager = _noteManager
+        self.managerList = [self.userManager , self.noteManager, self.groupManager, self, self.databaseManager]
+
+    def openWindow(self, keyword):
+        if(currentWindow != None):
+            currentWindow.close()
+            currentWindow = None
+        if(keyword == "login"):
+            currentWindow = LoginGui(self.managerList, self.root)
 
 #GUIs (view)
 
 class AbstractGUI(object):
-    def __init__(self, managerList):
+    def __init__(self, managerList, parentWindow):
         self.userManager = managerList[0]
         self.noteManager = managerList[1]
         self.groupManager = managerList[2]
         self.guiManager = managerList[3]
         self.databaseManager = managerList[4]
+        self.window = Toplevel(parent)
+    def close(self):
+        self.window.destroy()
+        self.window.update()
 
 
 class LoginGUI(AbstractGUI):
-    def __init__(self, managerList):
-        super.__init__(managerList)
-        self.window = Tk()
+    def __init__(self, managerList, parentWindow):
+        super.__init__(managerList, parentWindow)
+
         self.window.geometry("600x400")
 
         buttonFrame = Frame(master=self.window, height=150, bg="red")

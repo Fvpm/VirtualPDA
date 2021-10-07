@@ -10,7 +10,6 @@ userManager = managerList[0]
 noteManager = managerList[1]
 groupManager = managerList[2]
 guiManager = managerList[3]
-#3. Set managers to reference each other for easier control.
 #4. Open login window
 
 
