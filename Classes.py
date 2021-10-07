@@ -54,6 +54,8 @@ class UserManager(object):
         self.userManager = _groupManager
         self.noteManager = _noteManager
         self.guiManager = _guiManager
+    def login(self, username, password):
+        """Searches for user with username and checks validity of password. Returns True if success and False if any type of failure (username not found / password invalid)"""
 
 
 class NoteManager(object):
@@ -119,6 +121,10 @@ class GUIManager(object):
     def end(self):
         """Ends the tkinter program. Is called when x on any window is pressed"""
         self.root.destroy()
+    
+    def popup(self, text):
+        """Creates a simple popup with "ok" to close"""
+        pass
 
 
 
@@ -173,22 +179,28 @@ class LoginGUI(AbstractGUI):
         userNameFrame.pack()
         userNameLabel = Label(userNameFrame, text = "Username:")
         userNameLabel.pack(side=LEFT)
-        userNameEntry = Entry(userNameFrame)
-        userNameEntry.pack(side=RIGHT)
+        self.userNameEntry = Entry(userNameFrame)
+        self.userNameEntry.pack(side=RIGHT)
 
         passwordFrame = Frame(entryFrame)
         passwordFrame.pack()
         passwordLabel = Label(passwordFrame, text = "Password:")
         passwordLabel.pack(side=LEFT)
-        passwordEntry = Entry(passwordFrame)
-        passwordEntry.pack(side=RIGHT)
+        self.passwordEntry = Entry(passwordFrame)
+        self.passwordEntry.pack(side=RIGHT)
         
 
     def register(self):
         self.guiManager.openWindow("register")
 
     def login(self):
-        pass
+        userName = self.userNameEntry.get()
+        password = self.passwordEntry.get()
+        success = self.userManager.login(username,password)
+        if success:
+            self.guiManager.openWindow("home")
+        else:
+            self.guiManager.popup("Incorrect Username and Password")
 
     def guestLogin(self):
         pass
