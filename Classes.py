@@ -1,31 +1,94 @@
 """
 Currently coded for Python only, not coded to work with database
 
+
 """
 
 from tkinter import *
 
-#Managers
+#Managers (controllers)
 
-class UserManager(object):
-    pass
 
 class DatabaseManager(object):
-    pass
+    def __init__(self):
+        """Initialize connection to mySQL database"""
+    def startup(self) -> list:
+        """Creates managers and loads in their data from database. Returns list of [userManager, noteManager, groupManger, and guiManager]"""
+        self.groupManager = GroupManager()
+        self.userManager = UserManager()
+        self.noteManager = NoteManager()
+        self.guiManager = GUIManager()
 
-class GroupManager(object):
-    pass
+        #set all managers to reference each other
+        self.groupManager.setManagers(self, self.userManager, self.noteManager, self.guiManager)
+        self.userManager.setManagers(self, self.groupManager, self.noteManager, self.guiManager)
+        self.noteManager.setManagers(self, self.userManager, self.groupManager, self.guiManager)
+        self.guiManager.setManagers(self, self.userManager, self.noteManager, self.groupManager)
+
+        #load data from database
+        self.loadUsers()
+        self.loadNotes()
+        self.loadGroups()
+        return [self.userManager, self.noteManager, self.groupManager, self.guiManager]
+
+    def loadUsers(self):
+        """Will load user data into self.userManager"""
+        pass
+
+    def loadNotes(self):
+        """Will load database data into self.noteManager"""
+        pass
+
+    def loadGroups(self):
+        """Will load database data into self.groupManager"""
+        pass
+
+class UserManager(object):
+    def __init__(self):
+        self.userList = []
+        self.currentUser = None;
+    def setManagers(self, _databaseManager, _groupManager, _noteManager, _guiManager):
+        """Because Managers have to be made all at once and reference each other, this function is called when this object is created on startup but after all managers are initalized"""
+        self.databaseManager = _databaseManager
+        self.userManager = _groupManager
+        self.noteManager = _noteManager
+        self.guiManager = _guiManager
+
 
 class NoteManager(object):
-    pass
+    def __init__(self):
+        self.noteList = []
+    def setManagers(self, _databaseManager, _userManager, _groupManager, _guiManager):
+        """Because Managers have to be made all at once and reference each other, this function is called when this object is created on startup but after all managers are initalized"""
+        self.databaseManager = _databaseManager
+        self.userManager = _userManager
+        self.groupManager = _groupManager
+        self.guiManager = _guiManager
+    
+
+
+class GroupManager(object):
+    def __init__(self):
+        self.groupList = []
+    def setManagers(self, _databaseManager, _userManager, _noteManager, _guiManager):
+        """Because Managers have to be made all at once and reference each other, this function is called when this object is created on startup but after all managers are initalized"""
+        self.databaseManager = _databaseManager
+        self.userManager = _userManager
+        self.noteManager = _noteManager
+        self.guiManager = _guiManager
+
 
 class GUIManager(object):
     def __init__(self):
         self.currentWindow = ""
-    def setManagers(self, userManager, databaseManager)
-        pass
+    def setManagers(self, _databaseManager, _userManager, _noteManager, _groupManager):
+        """Because Managers have to be made all at once and reference each other, this function is called when this object is created on startup but after all managers are initalized"""
+        self.userManager = _userManager
+        self.databaseManager = _databaseManager
+        self.groupManager = _groupManager
+        self.noteManager = _noteManager
 
-#GUIs
+#GUIs (view)
 
 class AbstractGUI(object):
     def __init__(self, managerList):
@@ -52,12 +115,14 @@ class LoginGUI(AbstractGUI):
 
 
     def loginRequest(self):
-        #TODO sends validity check to UserManager. Popup appears if failure, otherwise this window closes and MainGUI
+        #TODO sends validity check to UserManager. Popup appears if failure, otherwise this window closes and MainGUI opens
         pass
 
 #class registerGUI(object):
 #    def __init__(self):
         
+
+#Data Objects (model)
 
 
 class DataObjects(object):
