@@ -1,12 +1,12 @@
 """
 Currently coded for Python only, not coded to work with database
-
-
 """
-
 from tkinter import *
 
+
+
 #Managers (controllers)
+
 
 
 class DatabaseManager(object):
@@ -43,6 +43,7 @@ class DatabaseManager(object):
         """Will load database data into self.groupManager"""
         pass
 
+
 class UserManager(object):
     def __init__(self):
         self.userList = []
@@ -63,8 +64,7 @@ class NoteManager(object):
         self.databaseManager = _databaseManager
         self.userManager = _userManager
         self.groupManager = _groupManager
-        self.guiManager = _guiManager
-    
+        self.guiManager = _guiManager    
 
 
 class GroupManager(object):
@@ -92,6 +92,7 @@ class GUIManager(object):
         self.managerList = [self.userManager , self.noteManager, self.groupManager, self, self.databaseManager]
 
     def startupGUI(self):
+        """This is run once to start up tkinter. It creates all windows as Toplevels that are children of a perepetually unused Tk, and then starts with opening the login window."""
         self.root = Tk()
         self.root.withdraw()
 
@@ -103,16 +104,32 @@ class GUIManager(object):
         self.root.mainloop()
 
     def openWindow(self, keyword):
+        """Switches windows by hiding the current one and showing the requested"""
         if(self.currentWindow != None):
             self.currentWindow.hide()
-        self.currentWindow = self.guiDict[keyword]
-        self.currentWindow.show()
+
+        if(keyword in self.guiDict.keys()):
+            self.currentWindow = self.guiDict[keyword]
+            self.currentWindow.show()
+        else:
+            #This shouldn't ever print in production but if it does it should be helpful.
+            print("Incorrect keyword sent to guiManager.openWindow(keyword) . Incorrect keyword: \"" + keyword + "\" not found in guiDict")
+
+        
     def end(self):
+        """Ends the tkinter program. Is called when x on any window is pressed"""
         self.root.destroy()
+
+
+
 
 #GUIs (view)
 
+
+
+
 class AbstractGUI(object):
+    """Parent class of all main GUI windows. Does not include popups"""
     def __init__(self, managerList, parent):
         self.userManager = managerList[0]
         self.noteManager = managerList[1]
@@ -122,11 +139,13 @@ class AbstractGUI(object):
         self.window = Toplevel()
         self.window.withdraw()
         self.window.protocol("WM_DELETE_WINDOW",self.onClose)
+
     def show(self):
         self.window.deiconify()
 
     def hide(self):
         self.window.withdraw()
+
     def onClose(self):
         self.guiManager.end()
 
@@ -143,22 +162,39 @@ class LoginGUI(AbstractGUI):
         labelFrame = Frame(master=self.window, height=250, bg="blue")
         labelFrame.pack(fill=BOTH, side=TOP, expand=True)
         
-        registerButton = Button(buttonFrame, text = "register", command = self.register)
-        registerButton.pack(side=BOTTOM)
+        registerButton = Button(buttonFrame, text = "Register", command = self.register)
+        loginButton = Button(buttonFrame, text = "Login", command = self.login)
+        guestButton = Button(buttonFrame, text = "Guest", command = self.guestLogin)
         
+        registerButton.pack()
+        loginButton.pack()
+        guestButton.pack()
 
     def register(self):
         self.guiManager.openWindow("register")
+
+    def login(self):
+        pass
+
+    def guestLogin(self):
+        pass
 
 
 class RegisterGUI(AbstractGUI):
     def __init__(self, managerList, parent):
         super().__init__(managerList, parent)
         self.window.geometry("400x700")
-
         
+        backButton = Button(self.window, text = "<-", command = self.backToLogin)
+        backButton.pack(side = TOP, anchor = "nw")
+
+    def backToLogin(self):
+        self.guiManager.openWindow("login")
+
+
 
 #Data Objects (model)
+
 
 
 class DataObjects(object):
@@ -166,7 +202,8 @@ class DataObjects(object):
         self.id = ident
         self.update = False
         self.mark = False
-        
+
+
 class Note(DataObjects):
     
     def __init__(self, own, visib, made, mod, memo, eday, impor, name, col, repeat, tag):
@@ -192,7 +229,8 @@ class Note(DataObjects):
     def share(self, shareuser):
         """share note with other users"""
         self.vis.append(shareuser)
-        
+
+
 class User(DataObjects):
     def __init__(self, intuse, intpass):
         self.username = intuse
@@ -230,7 +268,8 @@ class User(DataObjects):
         
     def delete(self):
         """delete the user"""
-    
+
+
 class Group(DataObjects):
     def __init__(self, groupname, desc, own):
         self.name = groupname
