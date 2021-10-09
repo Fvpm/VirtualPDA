@@ -2,8 +2,9 @@
 Currently coded for Python only, not coded to work with database
 """
 from tkinter import *
-
-
+import mysql.connector as mysql
+import keyring
+import getpass
 
 #Managers (controllers)
 
@@ -11,7 +12,37 @@ from tkinter import *
 
 class DatabaseManager(object):
     def __init__(self):
-        """Initialize connection to mySQL database"""
+        """Initialize connection to mySQL database. Prompts user for username and password to connect to "localhost" mysql server. Saves this username and password to the machine's keychain so that it only asks on first run."""
+
+        serviceId = 'VirtualPDA'
+        sqlUsername = keyring.get_password(serviceId, serviceId)
+
+        if(sqlUsername is None): #First time running program.
+            sqlUsername = input("Enter in mysql server username: ")
+            sqlPassword = getpass.getpass()
+        else:
+            sqlPassword = keyring.get_password(serviceId, sqlUsername)
+        
+        unsuccessful = True
+        while(unsuccessful):
+            
+            try:
+                self.database = mysql.connect(
+                    host = "localhost",
+                    user = sqlUsername,
+                    passwd = sqlPassword
+                )
+                unsuccessful = False
+
+            except Exception as e:
+                print(e)
+                print("Incorrect username and password for localhost mysql server. Please try again.")
+                sqlUsername = input("Enter in mysql server username: ")
+                sqlPassword = getpass.getpass()
+        keyring.set_password(serviceId, serviceId, sqlUsername)
+        keyring.set_password(serviceId, sqlUsername, sqlPassword)
+        verifyDatabase()
+
     def startup(self) -> list:
         """Creates managers and loads in their data from database. Returns list of [userManager, noteManager, groupManger, and guiManager]"""
         self.groupManager = GroupManager()
@@ -30,6 +61,9 @@ class DatabaseManager(object):
         self.loadNotes()
         self.loadGroups()
         return [self.userManager, self.noteManager, self.groupManager, self.guiManager]
+
+    def verifyDatabase(self):
+        """Checks that the database is in the correct format. Otherwise, it creates the database in the correct format."""
 
     def loadUsers(self):
         """Will load user data into self.userManager"""
@@ -124,6 +158,7 @@ class GUIManager(object):
     
     def popup(self, text):
         """Creates a simple popup with "ok" to close"""
+        #TODO
         pass
 
 
@@ -147,17 +182,21 @@ class AbstractGUI(object):
         self.window.protocol("WM_DELETE_WINDOW",self.onClose)
 
     def show(self):
+        """Makes window re-appear if invisible. Does nothing if visible"""
         self.window.deiconify()
 
     def hide(self):
+        """Makes window disppear if visible. Does not destroy window or data within it, just visually removes it from the screen"""
         self.window.withdraw()
 
     def onClose(self):
+        """Closing any window using the system's red X will close the program. This is a helper function for the event handler set up in __init__ in order to do so."""
         self.guiManager.end()
 
 
 class LoginGUI(AbstractGUI):
     def __init__(self, managerList, parent):
+        """Creates the window and all its widgets."""
         super().__init__(managerList, parent)
 
         self.window.geometry("600x400")
@@ -190,10 +229,12 @@ class LoginGUI(AbstractGUI):
         self.passwordEntry.pack(side=RIGHT)
         
 
-    def register(self):
+    def openRegisterWindow(self):
+        """Opens the register window, which will set loginGUI to invisible"""
         self.guiManager.openWindow("register")
 
     def login(self):
+        """Sends a login request to userManager. Logs user in and brings them to home if success, displays a popup if unsuccessful"""
         userName = self.userNameEntry.get()
         password = self.passwordEntry.get()
         success = self.userManager.login(userName,password)
@@ -203,6 +244,7 @@ class LoginGUI(AbstractGUI):
             self.guiManager.popup("Incorrect Username and Password")
 
     def guestLogin(self):
+        
         pass
 
 
