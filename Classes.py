@@ -3,6 +3,8 @@ Currently coded for Python only, not coded to work with database
 
 """
 
+import mysql.connector
+
 class DataObjects(object):
     def __init__(self, ident):
         self.id = ident
@@ -25,14 +27,22 @@ class Note(DataObjects):
         self.tags = [tag]
         
     def edit(self, entertext):
-        """Currently only allows adding to text, will eventually allow for full editing of text"""
+        """Currently only allows adding to text, will eventually allow for full editing of text. expected input is string"""
         self.text += entertext
         
     def delete(self):
         """delete the note"""
+        delete_note = ("DELETE FROM notes WHERE note_id = %s")
+        delete_notegroup=("DELETE FROM groupcon WHERE note_id = %s")
+        delete_noteuser=("DELETE FROM usercon WHERE note_id = %s")
+        delete_notetag=("DELETE FROM tags WHERE note_id = %s")
+        cursor.execute(delete_note, self.id)
+        cursor.execute(delete_notegroup, self.id)
+        cursor.execute(delete_noteuser, self.id)
+        cursor.execute(delete_notetag, self.id)
         
     def share(self, shareuser):
-        """share note with other users"""
+        """share note with other users. expected input is int"""
         self.vis.append(shareuser)
         
 class User(DataObjects):
@@ -43,35 +53,58 @@ class User(DataObjects):
         self.notes = []
         
     def changePass(self, newpassword):
+        """allows user to change their password. must be logged in before they can change password. expected input is string"""
         self.password = newpassword
+        modify_pass = ("UPDATE users"
+                       "SET password = %s"
+                       "WHERE userId = %s")
+        cursor.execute(modify_pass, newpassword, self.id)
         
     def checkPass(self, attempt):
+        """checks users entered password and makes sure it matches their saved password. expected input is string"""
         if attempt == self.password:
             return True
         else:
             return False
         
     def createNote(self, date, entry):
+        """create a new note. expected inputs are strings"""
         newnote=Note(self.id, self, date, date, entry, "", 0, "", "", False, "")
         self.notes.append(newnote)
         
     def changeUser(self, newusername):
+        """allows user to change their username. must be logged in before they can change username. expected input is string"""
         self.username = newusername
+        modify_user = ("UPDATE users"
+                       "SET username = %s"
+                       "WHERE user_id = %s")
+        cursor.execute(modify_user, newusername, self.id)
         
     def joinGroup(self, group):
-        """Join a group"""
+        """Join a group. expected input is int"""
         self.groups.append(group)
         
     def createGroup(self, groupname, desc):
-        """Create a new group"""
+        """Create a new group. expected inputs are strings"""
         newgroup = Group(groupname, desc, self)
         self.groups.append(newgroup)
         
     def leaveGroup(self, groupid):
+        """removes user from a group voluntarily. expected input is int"""
         self.groups.remove(groupid)
         
     def delete(self):
         """delete the user"""
+        delete_user = ("DELETE FROM users WHERE user_id = %s")
+        delete_usergroup=("DELETE FROM groupmem WHERE user_id = %s")
+        delete_usernote=("DELETE FROM usercon WHERE user_id = %s")
+        delete_usergrouping=("DELETE FROM groups WHERE user_id = %s")
+        delete_usernotes=("DELETE FROM notes WHERE user_id = %s")
+        cursor.execute(delete_user, self.id)
+        cursor.execute(delete_usergroup, self.id)
+        cursor.execute(delete_usernote, self.id)
+        cursor.execute(delete_usergrouping, self.id)
+        cursor.execute(delete_usernotes)
     
 class Group(DataObjects):
     def __init__(self, groupname, desc, own):
@@ -82,15 +115,19 @@ class Group(DataObjects):
         self.members = [own]
         
     def addUser(self, newuser):
+        """add a new user to the group. expected input is int"""
         self.members.append(newuser)
         
     def editDesc(self, newdesc):
+        """edit the description of the group. expected input is string"""
         self.description = newdesc
         
     def remUser(self, memind):
+        """remove a user from the group. expected input is int"""
         self.members.remove(memind)
         
     def editName(self, newname):
+        """edit the name of the group. expected input is string"""
         self.name = newname
         
     def togglePrivacy(self):
@@ -102,44 +139,9 @@ class Group(DataObjects):
         
     def delete(self):
         """Delete the group"""
-        
-def main():
-    user1 = User("Jason", "x1pho3nc0rp")
-    user2 = User("Kylie", "t3n3m4n")
-    note1 = Note(user1, user1, "0", "0", "", "0", 3, "Alexander Fails", "Red", False, "Junk")
-    group1 = Group("Alexander Fan Club", "For people who love Alexander the Great", user1)
-    
-    print(user1.checkPass("x1pho3nc0rp"))
-    user1.changePass("sh4d0wKn1gh7")
-    user1.changeUser("Alex")
-    print(user1.password)
-    print(user1.username)
-    user1.joinGroup(group1)
-    print(user1.groups)
-    user1.leaveGroup(group1)
-    print(user1.groups)
-    #print(user1.notes)
-    #user1.createNote("0", "Behold the Empire")
-    #print(user1.notes)
-    user1.createGroup("Titanic", "For those who love Titanic")
-    user1.joinGroup(group1)
-    print(user1.groups)
-    group1.addUser(user2)
-    print(group1.members)
-    group1.remUser(user1)
-    print(group1.members)
-    group1.editName("Rolling")
-    group1.editDesc("For those who want to roll dice")
-    print(group1.description)
-    print(group1.name)
-    print(group1.isPrivate)
-    group1.togglePrivacy()
-    print(group1.isPrivate)
-    print(note1.vis)
-    note1.share(user2)
-    print(note1.vis)
-    note1.edit("The cake is a lie")
-    print(note1.text)
-    
-
-main()
+        delete_group = ("DELETE FROM groups WHERE group_id = %s")
+        delete_groupmem=("DELETE FROM groupmem WHERE group_id = %s")
+        delete_groupnote=("DELETE FROM groupcon WHERE group_id = %s")
+        cursor.execute(delete_group, self.id)
+        cursor.execute(delete_groupmem, self.id)
+        cursor.execute(delete_groupnote, self.id)
