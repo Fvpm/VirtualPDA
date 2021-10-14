@@ -41,6 +41,9 @@ class DatabaseManager(object):
                 sqlPassword = getpass.getpass()
         keyring.set_password(serviceId, serviceId, sqlUsername)
         keyring.set_password(serviceId, sqlUsername, sqlPassword)
+
+        self.cursor = self.database.cursor()
+
         verifyDatabase()
 
     def startup(self) -> list:
