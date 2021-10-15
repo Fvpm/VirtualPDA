@@ -154,7 +154,16 @@ class DatabaseManager(object):
         self.cursor.execute(loadusers)
         load = self.cursor.fetchall()
         for user in load:
-            self.userManager.userList.append(user)
+            if type(user[0]) is not int:
+                user[0] = int(user[0])
+            else:
+                if type(user[1]) is not str:
+                    user[1] = str(user[1])
+                else:
+                    if type(user[2]) is not str:
+                        user[2] = str(user[2])
+                    else:
+                        self.userManager.newUser(user[0], user[1], user[2])
 
     def loadNotes(self):
         """Will load database data into self.noteManager"""
@@ -185,6 +194,9 @@ class DatabaseManager(object):
         delete_usernote=("DELETE FROM usercon WHERE user_id = %s")
         delete_usergrouping=("DELETE FROM groups WHERE user_id = %s")
         delete_usernotes=("DELETE FROM notes WHERE user_id = %s")
+        add_newuser=("INSERT INTO users"
+                     "(user_id, username, password)"
+                     "VALUES (%(user_id)s, %(username)s, %(password)s)")
         if user.update == True:
             self.cursor.execute(modify_pass, user.password, user.id)
             self.cursor.execute(modify_user, user.username, user.id)
@@ -194,6 +206,8 @@ class DatabaseManager(object):
             self.cursor.execute(delete_usernote, user.id)
             self.cursor.execute(delete_usergrouping, user.id)
             self.cursor.execute(delete_usernotes, user.id)
+        elif user.new == True:
+            self.cursor.execute(add_newuser, user.id, user.username, user.password)
         
     def saveNotes(self, note):
         #Not fully implemented yet
@@ -502,6 +516,7 @@ class User(DataObjects):
         self.password = intpass
         self.groups = []
         self.notes = []
+        self.new = False
         
     def changePass(self, newpassword):
         self.password = newpassword
