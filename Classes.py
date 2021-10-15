@@ -94,6 +94,15 @@ class UserManager(object):
         self.guiManager = _guiManager
     def login(self, username, password):
         """Searches for user with username and checks validity of password. Returns True if success and False if any type of failure (username not found / password invalid)"""
+        pass
+    def addUser(self, userId, username, password):
+        newUser = User(userId, username, password)
+        self.userList.append(newUser)
+    def userJoinGroup(self, user, group):
+        if group not in user.getGroups():
+            user.addGroup(group)
+        if user not in group.getMembers():
+            group.addMember(group)
 
 
 class NoteManager(object):
@@ -116,7 +125,8 @@ class GroupManager(object):
         self.userManager = _userManager
         self.noteManager = _noteManager
         self.guiManager = _guiManager
-
+    def userJoinGroup(self, user, group):
+        self.userManager.userJoinGroup(user,group)
 
 class GUIManager(object):
     def __init__(self):
@@ -391,6 +401,3 @@ class Group(DataObjects):
             self.isPrivate == False
         else:
             self.isPrivate == True
-        
-    def delete(self):
-        """Delete the group"""
