@@ -5,6 +5,7 @@ from tkinter import *
 import mysql.connector as mysql
 import keyring
 import getpass
+import datetime
 
 #Managers (controllers)
 
@@ -269,27 +270,30 @@ class RegisterGUI(AbstractGUI):
 
 
 class DataObjects(object):
-    def __init__(self, ident):
-        self.id = ident
+    def __init__(self, _id):
+        self.id = _id
         self.update = False
         self.mark = False
 
 
 class Note(DataObjects):
     
-    def __init__(self, own, visib, made, mod, memo, eday, impor, name, col, repeat, tag):
-        self.owner = own
-        self.vis = [visib]
-        self.dmade = made
-        self.lmod = mod
-        self.text = memo
-        self.edate = eday
-        self.imp = impor
-        self.title = name
-        self.color = col
-        self.rep = repeat
-        self.tags = [tag]
-        
+    def __init__(self, _id: int, _owner: User, _dateMade: str, _lastModified: str, _text: str, _eventDate: str,
+                 _importance: int, _title: str, _color: str, _repeating: str):
+        super().__init__(_id)
+        self.owner = _owner
+        self.dateMade = _dateMade
+        self.lastModified = _lastModified
+        self.text = _text
+        self.eventDate = _eventDate
+        self.importance = _importance
+        self.title = _title
+        self.color = _color
+        self.repeating = _repeating
+
+        self.tags = []
+        self.visibleBy = []
+
     def edit(self, entertext):
         """Currently only allows adding to text, will eventually allow for full editing of text"""
         self.text += entertext
@@ -305,36 +309,36 @@ class Note(DataObjects):
 class User(DataObjects):
     def __init__(self, _id, _username, _password):
         """Groups and notes are filled in separately by userManager when appropriate"""
-        self.id = _id
+        super().__init__(_id)
         self.username = _username
         self.password = _password
         self.groups = []
         self.notes = []
 
-    def getId(self):
+    def getId(self) -> int:
         """Returns self.id, an Integer representing a unique UserID"""
         return self.id
 
-    def getUsername(self):
+    def getUsername(self) -> str:
         """Returns username, a string identifier for the user object"""
         return self.userName
 
-    def getGroups(self):
+    def getGroups(self) -> list[Group]:
         """Returns a list of group objects the user is a part of"""
         return self.groups
 
-    def getNotes(self):
+    def getNotes(self) -> list[Note]:
         """Returns a list of note objects the user has access to"""
         return self.notes
 
-    def checkPassword(self, attempt):
+    def checkPassword(self, attempt: str) -> bool:
         """Returns True if password attempt is correct and False otherwise"""
         if attempt == self.password:
             return True
         else:
             return False
         
-    def changePassword(self, oldPassword, newPassword):
+    def changePassword(self, oldPassword: str, newPassword: str):
         """Changes password if the old password is correct"""
         if(self.checkPassword(oldPassword)):
             self.password = newPassword 
@@ -343,19 +347,19 @@ class User(DataObjects):
         """Sets a new username"""
         self.username = newUsername
         
-    def addGroup(self, group):
+    def addGroup(self, group: Group):
         """Join a group"""
         self.groups.append(group) 
         
-    def removeGroup(self, group):
+    def removeGroup(self, group: Group):
         """Remove group from group list"""
         self.groups.remove(group)
 
-    def addNote(self, note):
+    def addNote(self, note: Note):
         """Adds note to note list"""
         self.notes.append(note)
 
-    def removeNote(self, note):
+    def removeNote(self, note: Note):
         """removes note from note list"""
         self.notes.remove(note)
         
