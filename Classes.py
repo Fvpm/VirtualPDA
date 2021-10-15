@@ -3,6 +3,7 @@ Currently coded for Python only, not coded to work with database
 """
 from tkinter import *
 import mysql.connector as mysql
+from mysql.connector import errorcode
 import keyring
 import getpass
 import datetime
@@ -85,7 +86,7 @@ class DatabaseManager(object):
             " 'user_id' int(12) NOT NULL AUTO_INCREMENT,"
             " password"
             " username"
-            " PRIMARY KEY('book_num')"
+            " PRIMARY KEY('user_id')"
             ") ENGINE=InnoDB")
         TABLES['notes'] = (
             "CREATE TABLE 'notes' ("
@@ -114,19 +115,23 @@ class DatabaseManager(object):
             " name"
             " description"
             " 'user_id'"
-            " PRIMARY KEY('book_num')"
+            " PRIMARY KEY('group_id')"
             " FOREIGN KEY('user_id') REFERENCES users(user_id)"
             ") ENGINE=InnoDB")
         TABLES['groupmem'] = (
             "CREATE TABLE 'groupmem' ("
             " 'user_id' NOT NULL"
             " 'group_id' NOT NULL"
+            " FOREIGN KEY('user_id') REFERENCES users(user_id)"
+            " FOREIGN KEY('group_id') REFERENCES groups(group_id)"
             " PRIMARY KEY('user_id', 'group_id')"
             ") ENGINE=InnoDB")
         TABLES['usercon'] = (
             "CREATE TABLE 'usercon' ("
             " 'user_id' NOT NULL"
-            " 'note_id'"
+            " 'note_id' NOT NULL"
+            " FOREIGN KEY('user_id') REFERENCES users(user_id)"
+            " FOREIGN KEY('note_id') REFERENCES notes(note_id)"
             " PRIMARY KEY('user_id', 'note_id')"
             ") ENGINE=InnoDB")
         TABLES['tags'] = (
@@ -144,7 +149,7 @@ class DatabaseManager(object):
                 self.cursor.execute(table_make)
             except mysql.connector.Error as err:
                 if err.errno == errorcode.ER_TABLE_EXISTS_ERROR:
-                    print()
+                    print("Table already exists")
                 else:
                     print(err.msg)
 
@@ -234,18 +239,19 @@ class DatabaseManager(object):
                         "(user_id, note_id)"
                         "VALUES (%(user_id)s, %(note_id)s)")
         if note.update == True:
-            self.cursor.execute(add_usercon, shareuser, self.id)
-            self.cursor.execute(remove_tag, oldtag[0], self.id)
-            self.cursor.execute(add_tag, newtag, tagtext, self.id)
-            self.cursor.execute(update_notedata, entertext, self.id)
-            self.cursor.execute(update_notedate, datetime.now().date(), self.id)
-            self.cursor.execute(add_note, noteid, self.id, date, date, entry, "", 5, "", "", False)
-            self.cursor.execute(add_usercon, self.id, noteid)
+            #self.cursor.execute(add_usercon, shareuser, note.id) More work needed
+            #self.cursor.execute(remove_tag, oldtag[0], note.id) Conditions needed
+            #for tag in note.tags: Come back later
+             #   self.cursor.execute(add_tag, newtag, tag, note.id)
+            #self.cursor.execute(update_notedata, note.text, note.id) More work needed
+            self.cursor.execute(update_notedate, note.lmod, note.id)
+            #self.cursor.execute(add_note, note.id, self.id, date, date, entry, "", 5, "", "", False) More work needed
+            #self.cursor.execute(add_usercon, self.id, noteid) More work needed
         elif note.mark == True:
-            self.cursor.execute(delete_note, self.id)
-            self.cursor.execute(delete_notegroup, self.id)
-            self.cursor.execute(delete_noteuser, self.id)
-            self.cursor.execute(delete_notetag, self.id)
+            self.cursor.execute(delete_note, note.id)
+            self.cursor.execute(delete_notegroup, note.id)
+            self.cursor.execute(delete_noteuser, note.id)
+            self.cursor.execute(delete_notetag, note.id)
         
     def saveGroups(self, group):
         #Not fully implemented yet
@@ -273,18 +279,20 @@ class DatabaseManager(object):
                        "WHERE group_id = %s")
         remove_self=("DELETE FROM groupmem WHERE user_id = %s")
         if group.update == True:
-            self.cursor.execute(new_group, groupid, groupname, desc, self.id, True)
-            self.cursor.execute(add_groupmem, groupid, self.id)
-            self.cursor.execute(add_groupcon, groupid, noteid)
-            self.cursor.execute(remove_self, self.id)
-            self.cursor.execute(modify_desc, newdesc, self.id)
-            self.cursor.execute(remove_user, memind)
-            self.cursor.execute(modify_name, newname, self.id)
-            self.cursor.execute(modify_privacy, self.isPrivate, self.id)
+            #self.cursor.execute(add_groupmem, group.id, self.id) More work needed
+            #self.cursor.execute(add_groupcon, groupid, noteid) More work needed
+            #self.cursor.execute(remove_self, self.id) More work needed
+            self.cursor.execute(modify_desc, group.desc, group.id)
+            #self.cursor.execute(remove_user, memind) More work needed
+            self.cursor.execute(modify_name, group.name, group.id)
+            self.cursor.execute(modify_privacy, group.isPrivate, group.id)
         elif group.mark == True:
-            self.cursor.execute(delete_group, self.id)
-            self.cursor.execute(delete_groupmem, self.id)
-            self.cursor.execute(delete_groupnote, self.id)
+            self.cursor.execute(delete_group, group.id)
+            self.cursor.execute(delete_groupmem, group.id)
+            self.cursor.execute(delete_groupnote, group.id)
+        elif group.new == True:
+            #self.cursor.execute(new_group, group.id, group.name, group.desc, self.id, True) More work needed
+            pass
 
 class UserManager(object):
     def __init__(self):
@@ -504,9 +512,9 @@ class Note(DataObjects):
         self.title = _title
         self.color = _color
         self.repeating = _repeating
-
         self.tags = []
         self.visibleBy = []
+        self.new = False
 
 
     def edit(self, entertext):
@@ -533,6 +541,7 @@ class User(DataObjects):
         self.password = _password
         self.groups = []
         self.notes = []
+        self.new = False
 
     def getId(self) -> int:
         """Returns self.id, an Integer representing a unique UserID"""
