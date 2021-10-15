@@ -301,6 +301,7 @@ class UserManager(object):
         pass
     def addUser(self, userId, username, password):
         newUser = User(userId, username, password)
+        newUser.toggleNewUser()
         self.userList.append(newUser)
     def userJoinGroup(self, user, group):
         if group not in user.getGroups():
@@ -515,6 +516,10 @@ class Note(DataObjects):
     def share(self, shareuser):
         """share note with other users"""
         self.vis.append(shareuser)
+        
+    def toggleNewNote(self):
+        "Changes new from false to True"
+        self.new = True
 
 
 class User(DataObjects):
@@ -574,6 +579,10 @@ class User(DataObjects):
     def removeNote(self, note):
         """removes note from note list"""
         self.notes.remove(note)
+        
+    def toggleNewUser(self):
+        "Changes new from false to true"
+        self.new = True
 
 
 class Group(DataObjects):
@@ -607,3 +616,7 @@ class Group(DataObjects):
         
     def delete(self):
         """Delete the group"""
+        
+    def toggleNewGroup(self):
+        "Change new from false to true"
+        self.new = True
