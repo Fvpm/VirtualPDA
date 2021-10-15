@@ -329,11 +329,11 @@ class User(DataObjects):
             return False
         
     def changePassword(self, oldPassword, newPassword):
-        if(self.password == oldPassword):
+        if(self.checkPassword(oldPassword)):
             self.password = newPassword 
         
-    def changeUsername(self, newusername):
-        self.username = newusername
+    def changeUsername(self, newUsername):
+        self.username = newUsername
         
     def addGroup(self, group):
         """Join a group"""
