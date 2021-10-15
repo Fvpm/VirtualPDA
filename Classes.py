@@ -304,6 +304,7 @@ class Note(DataObjects):
 
 class User(DataObjects):
     def __init__(self, _id, _username, _password):
+        """Groups and notes are filled in separately by userManager when appropriate"""
         self.id = _id
         self.username = _username
         self.password = _password
@@ -311,28 +312,35 @@ class User(DataObjects):
         self.notes = []
 
     def getId(self):
+        """Returns self.id, an Integer representing a unique UserID"""
         return self.id
 
     def getUsername(self):
+        """Returns username, a string identifier for the user object"""
         return self.userName
 
     def getGroups(self):
+        """Returns a list of group objects the user is a part of"""
         return self.groups
 
     def getNotes(self):
+        """Returns a list of note objects the user has access to"""
         return self.notes
 
     def checkPassword(self, attempt):
+        """Returns True if password attempt is correct and False otherwise"""
         if attempt == self.password:
             return True
         else:
             return False
         
     def changePassword(self, oldPassword, newPassword):
+        """Changes password if the old password is correct"""
         if(self.checkPassword(oldPassword)):
             self.password = newPassword 
         
     def changeUsername(self, newUsername):
+        """Sets a new username"""
         self.username = newUsername
         
     def addGroup(self, group):
@@ -340,12 +348,15 @@ class User(DataObjects):
         self.groups.append(group) 
         
     def removeGroup(self, group):
+        """Remove group from group list"""
         self.groups.remove(group)
 
     def addNote(self, note):
+        """Adds note to note list"""
         self.notes.append(note)
 
     def removeNote(self, note):
+        """removes note from note list"""
         self.notes.remove(note)
         
 
