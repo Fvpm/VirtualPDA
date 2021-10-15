@@ -44,7 +44,7 @@ class DatabaseManager(object):
 
         self.cursor = self.database.cursor()
 
-        verifyDatabase()
+        self.verifyDatabase()
 
     def startup(self) -> list:
         """Creates managers and loads in their data from database. Returns list of [userManager, noteManager, groupManger, and guiManager]"""
@@ -210,7 +210,7 @@ class LoginGUI(AbstractGUI):
         entryFrame = Frame(master=self.window, height=250, bg="blue")
         entryFrame.pack(fill=BOTH, side=TOP, expand=True)
 
-        registerButton = Button(buttonFrame, text = "Register", command = self.register)
+        registerButton = Button(buttonFrame, text = "Register", command = self.openRegisterWindow)
         registerButton.pack()
         loginButton = Button(buttonFrame, text = "Login", command = self.login)
         loginButton.pack()
