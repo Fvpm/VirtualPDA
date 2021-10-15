@@ -162,8 +162,7 @@ class DatabaseManager(object):
                 else:
                     if type(user[2]) is not str:
                         user[2] = str(user[2])
-                    else:
-                        self.userManager.newUser(user[0], user[1], user[2])
+            self.userManager.addUser(user[0], user[1], user[2])
 
     def loadNotes(self):
         """Will load database data into self.noteManager"""
@@ -299,7 +298,15 @@ class UserManager(object):
         self.guiManager = _guiManager
     def login(self, username, password):
         """Searches for user with username and checks validity of password. Returns True if success and False if any type of failure (username not found / password invalid)"""
-
+        pass
+    def addUser(self, userId, username, password):
+        newUser = User(userId, username, password)
+        self.userList.append(newUser)
+    def userJoinGroup(self, user, group):
+        if group not in user.getGroups():
+            user.addGroup(group)
+        if user not in group.getMembers():
+            group.addMember(group)
 
 class NoteManager(object):
     def __init__(self):
@@ -496,6 +503,7 @@ class Note(DataObjects):
         self.color = col
         self.rep = repeat
         self.tags = [tag]
+        self.new = False
         
     def edit(self, entertext):
         """Currently only allows adding to text, will eventually allow for full editing of text"""
@@ -510,44 +518,62 @@ class Note(DataObjects):
 
 
 class User(DataObjects):
-    def __init__(self, ident, intuse, intpass):
-        super().__init__(ident)
-        self.username = intuse
-        self.password = intpass
+    def __init__(self, _id, _username, _password):
+        """Groups and notes are filled in separately by userManager when appropriate"""
+        super().__init__(_id)
+        self.username = _username
+        self.password = _password
         self.groups = []
         self.notes = []
         self.new = False
-        
-    def changePass(self, newpassword):
-        self.password = newpassword
-        
-    def checkPass(self, attempt):
+
+    def getId(self) -> int:
+        """Returns self.id, an Integer representing a unique UserID"""
+        return self.id
+
+    def getUsername(self) -> str:
+        """Returns username, a string identifier for the user object"""
+        return self.userName
+
+    def getGroups(self) -> list:
+        """Returns a list of group objects the user is a part of"""
+        return self.groups
+
+    def getNotes(self) -> list:
+        """Returns a list of note objects the user has access to"""
+        return self.notes
+
+    def checkPassword(self, attempt: str) -> bool:
+        """Returns True if password attempt is correct and False otherwise"""
         if attempt == self.password:
             return True
         else:
             return False
         
-    def createNote(self, date, entry):
-        newnote=Note(self.id, self, date, date, entry, "", 0, "", "", False, "")
-        self.notes.append(newnote)
+    def changePassword(self, oldPassword: str, newPassword: str):
+        """Changes password if the old password is correct"""
+        if(self.checkPassword(oldPassword)):
+            self.password = newPassword 
         
-    def changeUser(self, newusername):
-        self.username = newusername
+    def changeUsername(self, newUsername):
+        """Sets a new username"""
+        self.username = newUsername
         
-    def joinGroup(self, group):
+    def addGroup(self, group):
         """Join a group"""
-        self.groups.append(group)
+        self.groups.append(group) 
         
-    def createGroup(self, groupname, desc):
-        """Create a new group"""
-        newgroup = Group(groupname, desc, self)
-        self.groups.append(newgroup)
-        
-    def leaveGroup(self, groupid):
-        self.groups.remove(groupid)
-        
-    def delete(self):
-        """delete the user"""
+    def removeGroup(self, group):
+        """Remove group from group list"""
+        self.groups.remove(group)
+
+    def addNote(self, note):
+        """Adds note to note list"""
+        self.notes.append(note)
+
+    def removeNote(self, note):
+        """removes note from note list"""
+        self.notes.remove(note)
 
 
 class Group(DataObjects):
@@ -558,6 +584,7 @@ class Group(DataObjects):
         self.owner = own
         self.isPrivate = True
         self.members = [own]
+        self.new = False
         
     def addUser(self, newuser):
         self.members.append(newuser)
