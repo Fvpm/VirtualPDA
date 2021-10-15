@@ -301,13 +301,13 @@ class UserManager(object):
         pass
     def addUser(self, userId, username, password):
         newUser = User(userId, username, password)
-        newUser.toggleNewUser()
         self.userList.append(newUser)
     def userJoinGroup(self, user, group):
         if group not in user.getGroups():
             user.addGroup(group)
         if user not in group.getMembers():
             group.addMember(group)
+            
 
 class NoteManager(object):
     def __init__(self):
@@ -329,12 +329,14 @@ class GroupManager(object):
         self.userManager = _userManager
         self.noteManager = _noteManager
         self.guiManager = _guiManager
-
+    def userJoinGroup(self, user, group):
+        self.userManager.userJoinGroup(user,group)
 
 class GUIManager(object):
     def __init__(self):
         self.currentWindow = None
         self.guiDict = {}
+        self.root = Tk()
 
     def setManagers(self, _databaseManager, _userManager, _noteManager, _groupManager):
         """Because Managers have to be made all at once and reference each other, this function is called when this object is created on startup but after all managers are initalized"""
@@ -346,7 +348,6 @@ class GUIManager(object):
 
     def startupGUI(self):
         """This is run once to start up tkinter. It creates all windows as Toplevels that are children of a perepetually unused Tk, and then starts with opening the login window."""
-        self.root = Tk()
         self.root.withdraw()
 
         self.guiDict["login"] = LoginGUI(self.managerList, self.root)
@@ -483,29 +484,31 @@ class RegisterGUI(AbstractGUI):
 
 
 class DataObjects(object):
-    def __init__(self, ident):
-        self.id = ident
+    def __init__(self, _id):
+        self.id = _id
         self.update = False
         self.mark = False
 
 
 class Note(DataObjects):
     
-    def __init__(self, ident, own, visib, made, mod, memo, eday, impor, name, col, repeat, tag):
-        super().__init__(ident)
-        self.owner = own
-        self.vis = [visib]
-        self.dmade = made
-        self.lmod = mod
-        self.text = memo
-        self.edate = eday
-        self.imp = impor
-        self.title = name
-        self.color = col
-        self.rep = repeat
-        self.tags = [tag]
-        self.new = False
-        
+    def __init__(self, _id: int, _owner, _dateMade: str, _lastModified: str, _text: str, _eventDate: str,
+                 _importance: int, _title: str, _color: str, _repeating: str):
+        super().__init__(_id)
+        self.owner = _owner
+        self.dateMade = _dateMade
+        self.lastModified = _lastModified
+        self.text = _text
+        self.eventDate = _eventDate
+        self.importance = _importance
+        self.title = _title
+        self.color = _color
+        self.repeating = _repeating
+
+        self.tags = []
+        self.visibleBy = []
+
+
     def edit(self, entertext):
         """Currently only allows adding to text, will eventually allow for full editing of text"""
         self.text += entertext
@@ -530,7 +533,6 @@ class User(DataObjects):
         self.password = _password
         self.groups = []
         self.notes = []
-        self.new = False
 
     def getId(self) -> int:
         """Returns self.id, an Integer representing a unique UserID"""
@@ -580,9 +582,7 @@ class User(DataObjects):
         """removes note from note list"""
         self.notes.remove(note)
         
-    def toggleNewUser(self):
-        "Changes new from false to true"
-        self.new = True
+
 
 
 class Group(DataObjects):
@@ -613,10 +613,3 @@ class Group(DataObjects):
             self.isPrivate == False
         else:
             self.isPrivate == True
-        
-    def delete(self):
-        """Delete the group"""
-        
-    def toggleNewGroup(self):
-        "Change new from false to true"
-        self.new = True
