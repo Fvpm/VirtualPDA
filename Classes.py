@@ -278,7 +278,7 @@ class DataObjects(object):
 
 class Note(DataObjects):
     
-    def __init__(self, _id: int, _owner: User, _dateMade: str, _lastModified: str, _text: str, _eventDate: str,
+    def __init__(self, _id: int, _owner, _dateMade: str, _lastModified: str, _text: str, _eventDate: str,
                  _importance: int, _title: str, _color: str, _repeating: str):
         super().__init__(_id)
         self.owner = _owner
@@ -323,11 +323,11 @@ class User(DataObjects):
         """Returns username, a string identifier for the user object"""
         return self.userName
 
-    def getGroups(self) -> list[Group]:
+    def getGroups(self) -> list:
         """Returns a list of group objects the user is a part of"""
         return self.groups
 
-    def getNotes(self) -> list[Note]:
+    def getNotes(self) -> list:
         """Returns a list of note objects the user has access to"""
         return self.notes
 
@@ -347,19 +347,19 @@ class User(DataObjects):
         """Sets a new username"""
         self.username = newUsername
         
-    def addGroup(self, group: Group):
+    def addGroup(self, group):
         """Join a group"""
         self.groups.append(group) 
         
-    def removeGroup(self, group: Group):
+    def removeGroup(self, group):
         """Remove group from group list"""
         self.groups.remove(group)
 
-    def addNote(self, note: Note):
+    def addNote(self, note):
         """Adds note to note list"""
         self.notes.append(note)
 
-    def removeNote(self, note: Note):
+    def removeNote(self, note):
         """removes note from note list"""
         self.notes.remove(note)
         
