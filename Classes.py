@@ -121,6 +121,7 @@ class GUIManager(object):
     def __init__(self):
         self.currentWindow = None
         self.guiDict = {}
+        self.root = Tk()
 
     def setManagers(self, _databaseManager, _userManager, _noteManager, _groupManager):
         """Because Managers have to be made all at once and reference each other, this function is called when this object is created on startup but after all managers are initalized"""
@@ -132,7 +133,6 @@ class GUIManager(object):
 
     def startupGUI(self):
         """This is run once to start up tkinter. It creates all windows as Toplevels that are children of a perepetually unused Tk, and then starts with opening the login window."""
-        self.root = Tk()
         self.root.withdraw()
 
         self.guiDict["login"] = LoginGUI(self.managerList, self.root)
@@ -303,42 +303,51 @@ class Note(DataObjects):
 
 
 class User(DataObjects):
-    def __init__(self, intuse, intpass):
-        self.username = intuse
-        self.password = intpass
+    def __init__(self, _id, _username, _password):
+        self.id = _id
+        self.username = _username
+        self.password = _password
         self.groups = []
         self.notes = []
-        
-    def changePass(self, newpassword):
-        self.password = newpassword
-        
-    def checkPass(self, attempt):
+
+    def getId(self):
+        return self.id
+
+    def getUsername(self):
+        return self.userName
+
+    def getGroups(self):
+        return self.groups
+
+    def getNotes(self):
+        return self.notes
+
+    def checkPassword(self, attempt):
         if attempt == self.password:
             return True
         else:
             return False
         
-    def createNote(self, date, entry):
-        newnote=Note(self.id, self, date, date, entry, "", 0, "", "", False, "")
-        self.notes.append(newnote)
+    def changePassword(self, oldPassword, newPassword):
+        if(self.password == oldPassword):
+            self.password = newPassword 
         
-    def changeUser(self, newusername):
+    def changeUsername(self, newusername):
         self.username = newusername
         
-    def joinGroup(self, group):
+    def addGroup(self, group):
         """Join a group"""
-        self.groups.append(group)
+        self.groups.append(group) 
         
-    def createGroup(self, groupname, desc):
-        """Create a new group"""
-        newgroup = Group(groupname, desc, self)
-        self.groups.append(newgroup)
+    def removeGroup(self, group):
+        self.groups.remove(group)
+
+    def addNote(self, note):
+        self.notes.append(note)
+
+    def removeNote(self, note):
+        self.notes.remove(note)
         
-    def leaveGroup(self, groupid):
-        self.groups.remove(groupid)
-        
-    def delete(self):
-        """delete the user"""
 
 
 class Group(DataObjects):
