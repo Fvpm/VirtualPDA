@@ -5,6 +5,7 @@ from tkinter import *
 import mysql.connector as mysql
 import keyring
 import getpass
+import datetime
 
 #Managers (controllers)
 
@@ -14,7 +15,7 @@ class DatabaseManager(object):
     def __init__(self):
         """Initialize connection to mySQL database. Prompts user for username and password to connect to "localhost" mysql server. Saves this username and password to the machine's keychain so that it only asks on first run."""
 
-        serviceId = 'VirtualPDA'
+        serviceId = 'VirtualPDACISS471JustinFelice'
         sqlUsername = keyring.get_password(serviceId, serviceId)
 
         if(sqlUsername is None): #First time running program.
@@ -44,7 +45,7 @@ class DatabaseManager(object):
 
         self.cursor = self.database.cursor()
 
-        self.verifyDatabase()
+        self.verifyDatabase(serviceId)
 
     def startup(self) -> list:
         """Creates managers and loads in their data from database. Returns list of [userManager, noteManager, groupManger, and guiManager]"""
@@ -65,12 +66,103 @@ class DatabaseManager(object):
         self.loadGroups()
         return [self.userManager, self.noteManager, self.groupManager, self.guiManager]
 
-    def verifyDatabase(self):
+    def verifyDatabase(self, serviceId):
         """Checks that the database is in the correct format. Otherwise, it creates the database in the correct format."""
+        try:
+            self.cursor.execute("USE {}".format(serviceId))
+        except mysql.connector.Error as err:
+            if err.errno == errorcode.ER_BAD_DB_ERROR:
+                self.createDatabase(serviceId)
+            else:
+                print("Incorrect database")
+        
+    def createDatabase(self, serviceId):
+        """Creates all the tables in the database if there wasn't already a database"""
+        TABLES = {}
+
+        TABLES['users'] = (
+            "CREATE TABLE 'users' ("
+            " 'user_id' int(12) NOT NULL AUTO_INCREMENT,"
+            " password"
+            " username"
+            " PRIMARY KEY('book_num')"
+            ") ENGINE=InnoDB")
+        TABLES['notes'] = (
+            "CREATE TABLE 'notes' ("
+            " 'note_id' int(12) NOT NULL AUTO_INCREMENT,"
+            " 'user_id' int(12)"
+            " date_made"
+            " lastmod"
+            " notedata"
+            " date"
+            " import"
+            " title"
+            " color"
+            " repeat"
+            " PRIMARY KEY('note_id')"
+            " FOREIGN KEY('user_id') REFERENCES users(user_id)"
+            ") ENGINE=InnoDB")
+        TABLES['groupcon'] = (
+            "CREATE TABLE 'usercon' ("
+            " 'group_id' NOT NULL"
+            " 'note_id' NOT NULL"
+            " PRIMARY KEY('group_id', 'note_id')"
+            ") ENGINE=InnoDB")
+        TABLES['groups'] = (
+            "CREATE TABLE 'groups' ("
+            " 'group_id' int(12) NOT NULL AUTO_INCREMENT,"
+            " name"
+            " description"
+            " 'user_id'"
+            " PRIMARY KEY('book_num')"
+            " FOREIGN KEY('user_id') REFERENCES users(user_id)"
+            ") ENGINE=InnoDB")
+        TABLES['groupmem'] = (
+            "CREATE TABLE 'groupmem' ("
+            " 'user_id' NOT NULL"
+            " 'group_id' NOT NULL"
+            " PRIMARY KEY('user_id', 'group_id')"
+            ") ENGINE=InnoDB")
+        TABLES['usercon'] = (
+            "CREATE TABLE 'usercon' ("
+            " 'user_id' NOT NULL"
+            " 'note_id'"
+            " PRIMARY KEY('user_id', 'note_id')"
+            ") ENGINE=InnoDB")
+        TABLES['tags'] = (
+            "CREATE TABLE 'tags' ("
+            " 'tag_id' int(12) NOT NULL AUTO_INCREMENT,"
+            " tag_text"
+            " 'note_id'"
+            " PRIMARY KEY('tag_id')"
+            " FOREIGN KEY('note_id') REFERENCES notes(note_id)"
+            ") ENGINE=InnoDB")
+        self.cursor.execute("CREATE DATABASE {} DEFAULT CHARACTER SET 'utf8'".format(serviceId))
+        for table in TABLES:
+            table_make = TABLES[table]
+            try:
+                self.cursor.execute(table_make)
+            except mysql.connector.Error as err:
+                if err.errno == errorcode.ER_TABLE_EXISTS_ERROR:
+                    print()
+                else:
+                    print(err.msg)
 
     def loadUsers(self):
         """Will load user data into self.userManager"""
-        pass
+        loadusers = ("SELECT * FROM users")
+        self.cursor.execute(loadusers)
+        load = self.cursor.fetchall()
+        for user in load:
+            if type(user[0]) is not int:
+                user[0] = int(user[0])
+            else:
+                if type(user[1]) is not str:
+                    user[1] = str(user[1])
+                else:
+                    if type(user[2]) is not str:
+                        user[2] = str(user[2])
+            self.userManager.addUser(user[0], user[1], user[2])
 
     def loadNotes(self):
         """Will load database data into self.noteManager"""
@@ -79,7 +171,120 @@ class DatabaseManager(object):
     def loadGroups(self):
         """Will load database data into self.groupManager"""
         pass
-
+    
+    def saveDatabase(self):
+        """Saves and updates the database"""
+        for User in self.userManager.userList:
+            self.saveUsers(User)
+        for Note in self.noteManager.noteList:
+            self.saveNotes(Note)
+        for Group in self.groupManager.groupList:
+            self.saveGroups(Group)
+        
+    def saveUsers(self, user):
+        modify_pass = ("UPDATE users"
+                       "SET password = %s"
+                       "WHERE user_id = %s")
+        modify_user = ("UPDATE users"
+                       "SET username = %s"
+                       "WHERE user_id = %s")
+        delete_user = ("DELETE FROM users WHERE user_id = %s")
+        delete_usergroup=("DELETE FROM groupmem WHERE user_id = %s")
+        delete_usernote=("DELETE FROM usercon WHERE user_id = %s")
+        delete_usergrouping=("DELETE FROM groups WHERE user_id = %s")
+        delete_usernotes=("DELETE FROM notes WHERE user_id = %s")
+        add_newuser=("INSERT INTO users"
+                     "(user_id, username, password)"
+                     "VALUES (%(user_id)s, %(username)s, %(password)s)")
+        if user.update == True:
+            self.cursor.execute(modify_pass, user.password, user.id)
+            self.cursor.execute(modify_user, user.username, user.id)
+        elif user.mark == True:
+            self.cursor.execute(delete_user, user.id)
+            self.cursor.execute(delete_usergroup, user.id)
+            self.cursor.execute(delete_usernote, user.id)
+            self.cursor.execute(delete_usergrouping, user.id)
+            self.cursor.execute(delete_usernotes, user.id)
+        elif user.new == True:
+            self.cursor.execute(add_newuser, user.id, user.username, user.password)
+        
+    def saveNotes(self, note):
+        #Not fully implemented yet
+        add_usercon = ("INSERT INTO usercon"
+                        "(user_id, note_id)"
+                        "VALUES (%(user_id)s, %(note_id)s)")
+        delete_note = ("DELETE FROM notes WHERE note_id = %s")
+        delete_notegroup=("DELETE FROM groupcon WHERE note_id = %s")
+        delete_noteuser=("DELETE FROM usercon WHERE note_id = %s")
+        delete_notetag=("DELETE FROM tags WHERE note_id = %s")
+        remove_tag = ("DELETE FROM tags WHERE tag_id = %s AND note_id = %s")
+        add_tag = ("INSERT INTO tags"
+                   "(tag_id, tag_text, note_id)"
+                   "VALUES (%(tag_id)s, %(tag_text)s, %(note_id)s)")
+        update_notedata = ("UPDATE notes"
+                        "SET notedata = %s"
+                        "WHERE note_id = %s")
+        update_notedate = ("UPDATE notes"
+                        "SET lastmod = %s"
+                        "WHERE note_id = %s")
+        add_note = ("INSERT INTO notes"
+                        "(note_id, user_id, date_made, lastmod, notedata, date, import, title, color, repeat)"
+                        "VALUES (%(note_id)s, %(user_id)s, %(date_made)s, %(lastmod)s, %(notedata)s, %(date)s, %(import)s, %(title)s, %(color)s, %(repeat)s)")
+        add_usercon = ("INSERT INTO usercon"
+                        "(user_id, note_id)"
+                        "VALUES (%(user_id)s, %(note_id)s)")
+        if note.update == True:
+            self.cursor.execute(add_usercon, shareuser, self.id)
+            self.cursor.execute(remove_tag, oldtag[0], self.id)
+            self.cursor.execute(add_tag, newtag, tagtext, self.id)
+            self.cursor.execute(update_notedata, entertext, self.id)
+            self.cursor.execute(update_notedate, datetime.now().date(), self.id)
+            self.cursor.execute(add_note, noteid, self.id, date, date, entry, "", 5, "", "", False)
+            self.cursor.execute(add_usercon, self.id, noteid)
+        elif note.mark == True:
+            self.cursor.execute(delete_note, self.id)
+            self.cursor.execute(delete_notegroup, self.id)
+            self.cursor.execute(delete_noteuser, self.id)
+            self.cursor.execute(delete_notetag, self.id)
+        
+    def saveGroups(self, group):
+        #Not fully implemented yet
+        new_group = ("INSERT INTO groups"
+                     "(group_id, name, description, user_id, privacy)"
+                     "VALUES (%(group_id)s, %(name)s, %(description)s, %(user_id)s, %(privacy)s)")
+        add_groupmem = ("INSERT INTO groupmem"
+                        "(group_id, user_id)"
+                        "VALUES (%(group_id)s, %(user_id)s)")
+        add_groupcon = ("INSERT INTO groupcon"
+                        "(group_id, note_id)"
+                        "VALUES (%(group_id)s, %(note_id)s)")
+        delete_group = ("DELETE FROM groups WHERE group_id = %s")
+        delete_groupmem=("DELETE FROM groupmem WHERE group_id = %s")
+        delete_groupnote=("DELETE FROM groupcon WHERE group_id = %s")
+        modify_privacy = ("UPDATE groups"
+                       "SET privacy = %s"
+                       "WHERE group_id = %s")
+        modify_name = ("UPDATE groups"
+                       "SET name = %s"
+                       "WHERE group_id = %s")
+        remove_user=("DELETE FROM groupmem WHERE user_id = %s")
+        modify_desc = ("UPDATE groups"
+                       "SET description = %s"
+                       "WHERE group_id = %s")
+        remove_self=("DELETE FROM groupmem WHERE user_id = %s")
+        if group.update == True:
+            self.cursor.execute(new_group, groupid, groupname, desc, self.id, True)
+            self.cursor.execute(add_groupmem, groupid, self.id)
+            self.cursor.execute(add_groupcon, groupid, noteid)
+            self.cursor.execute(remove_self, self.id)
+            self.cursor.execute(modify_desc, newdesc, self.id)
+            self.cursor.execute(remove_user, memind)
+            self.cursor.execute(modify_name, newname, self.id)
+            self.cursor.execute(modify_privacy, self.isPrivate, self.id)
+        elif group.mark == True:
+            self.cursor.execute(delete_group, self.id)
+            self.cursor.execute(delete_groupmem, self.id)
+            self.cursor.execute(delete_groupnote, self.id)
 
 class UserManager(object):
     def __init__(self):
@@ -93,7 +298,16 @@ class UserManager(object):
         self.guiManager = _guiManager
     def login(self, username, password):
         """Searches for user with username and checks validity of password. Returns True if success and False if any type of failure (username not found / password invalid)"""
-
+        pass
+    def addUser(self, userId, username, password):
+        newUser = User(userId, username, password)
+        newUser.toggleNewUser()
+        self.userList.append(newUser)
+    def userJoinGroup(self, user, group):
+        if group not in user.getGroups():
+            user.addGroup(group)
+        if user not in group.getMembers():
+            group.addMember(group)
 
 class NoteManager(object):
     def __init__(self):
@@ -277,7 +491,8 @@ class DataObjects(object):
 
 class Note(DataObjects):
     
-    def __init__(self, own, visib, made, mod, memo, eday, impor, name, col, repeat, tag):
+    def __init__(self, ident, own, visib, made, mod, memo, eday, impor, name, col, repeat, tag):
+        super().__init__(ident)
         self.owner = own
         self.vis = [visib]
         self.dmade = made
@@ -289,6 +504,7 @@ class Note(DataObjects):
         self.color = col
         self.rep = repeat
         self.tags = [tag]
+        self.new = False
         
     def edit(self, entertext):
         """Currently only allows adding to text, will eventually allow for full editing of text"""
@@ -300,54 +516,84 @@ class Note(DataObjects):
     def share(self, shareuser):
         """share note with other users"""
         self.vis.append(shareuser)
+        
+    def toggleNewNote(self):
+        "Changes new from false to True"
+        self.new = True
 
 
 class User(DataObjects):
-    def __init__(self, intuse, intpass):
-        self.username = intuse
-        self.password = intpass
+    def __init__(self, _id, _username, _password):
+        """Groups and notes are filled in separately by userManager when appropriate"""
+        super().__init__(_id)
+        self.username = _username
+        self.password = _password
         self.groups = []
         self.notes = []
-        
-    def changePass(self, newpassword):
-        self.password = newpassword
-        
-    def checkPass(self, attempt):
+        self.new = False
+
+    def getId(self) -> int:
+        """Returns self.id, an Integer representing a unique UserID"""
+        return self.id
+
+    def getUsername(self) -> str:
+        """Returns username, a string identifier for the user object"""
+        return self.userName
+
+    def getGroups(self) -> list:
+        """Returns a list of group objects the user is a part of"""
+        return self.groups
+
+    def getNotes(self) -> list:
+        """Returns a list of note objects the user has access to"""
+        return self.notes
+
+    def checkPassword(self, attempt: str) -> bool:
+        """Returns True if password attempt is correct and False otherwise"""
         if attempt == self.password:
             return True
         else:
             return False
         
-    def createNote(self, date, entry):
-        newnote=Note(self.id, self, date, date, entry, "", 0, "", "", False, "")
-        self.notes.append(newnote)
+    def changePassword(self, oldPassword: str, newPassword: str):
+        """Changes password if the old password is correct"""
+        if(self.checkPassword(oldPassword)):
+            self.password = newPassword 
         
-    def changeUser(self, newusername):
-        self.username = newusername
+    def changeUsername(self, newUsername):
+        """Sets a new username"""
+        self.username = newUsername
         
-    def joinGroup(self, group):
+    def addGroup(self, group):
         """Join a group"""
-        self.groups.append(group)
+        self.groups.append(group) 
         
-    def createGroup(self, groupname, desc):
-        """Create a new group"""
-        newgroup = Group(groupname, desc, self)
-        self.groups.append(newgroup)
+    def removeGroup(self, group):
+        """Remove group from group list"""
+        self.groups.remove(group)
+
+    def addNote(self, note):
+        """Adds note to note list"""
+        self.notes.append(note)
+
+    def removeNote(self, note):
+        """removes note from note list"""
+        self.notes.remove(note)
         
-    def leaveGroup(self, groupid):
-        self.groups.remove(groupid)
-        
-    def delete(self):
-        """delete the user"""
+    def toggleNewUser(self):
+        "Changes new from false to true"
+        self.new = True
 
 
 class Group(DataObjects):
-    def __init__(self, groupname, desc, own):
+    def __init__(self, ident, groupname, desc, own):
+        super().__init__(ident)
         self.name = groupname
         self.description = desc
         self.owner = own
         self.isPrivate = True
         self.members = [own]
+        self.new = False
         
     def addUser(self, newuser):
         self.members.append(newuser)
@@ -370,3 +616,7 @@ class Group(DataObjects):
         
     def delete(self):
         """Delete the group"""
+        
+    def toggleNewGroup(self):
+        "Change new from false to true"
+        self.new = True
