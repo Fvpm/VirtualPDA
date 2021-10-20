@@ -16,9 +16,9 @@ class DatabaseManager(object):
     def __init__(self):
         """Initialize connection to mySQL database. Prompts user for username and password to connect to "localhost" mysql server. Saves this username and password to the machine's keychain so that it only asks on first run."""
 
-        serviceId = 'VirtualPDACISS471JustinFelice'
+        serviceId = 'VirtualPDA' 
         sqlUsername = keyring.get_password(serviceId, serviceId)
-
+        """
         if(sqlUsername is None): #First time running program.
             sqlUsername = input("Enter in mysql server username: ")
             sqlPassword = getpass.getpass()
@@ -43,7 +43,12 @@ class DatabaseManager(object):
                 sqlPassword = getpass.getpass()
         keyring.set_password(serviceId, serviceId, sqlUsername)
         keyring.set_password(serviceId, sqlUsername, sqlPassword)
-
+        """
+        self.database = mysql.connect(
+            host = "localhost",
+            user = input("Username: "),
+            passwd = input("Password: ")
+        ) 
         self.cursor = self.database.cursor()
 
         self.verifyDatabase(serviceId)
@@ -71,7 +76,7 @@ class DatabaseManager(object):
         """Checks that the database is in the correct format. Otherwise, it creates the database in the correct format."""
         try:
             self.cursor.execute("USE {}".format(serviceId))
-        except mysql.connector.Error as err:
+        except mysql.Error as err:
             if err.errno == errorcode.ER_BAD_DB_ERROR:
                 self.createDatabase(serviceId)
             else:
