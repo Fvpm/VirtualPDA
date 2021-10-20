@@ -18,7 +18,6 @@ class DatabaseManager(object):
 
         serviceId = 'VirtualPDA' 
         sqlUsername = keyring.get_password(serviceId, serviceId)
-        """
         if(sqlUsername is None): #First time running program.
             sqlUsername = input("Enter in mysql server username: ")
             sqlPassword = getpass.getpass()
@@ -43,14 +42,18 @@ class DatabaseManager(object):
                 sqlPassword = getpass.getpass()
         keyring.set_password(serviceId, serviceId, sqlUsername)
         keyring.set_password(serviceId, sqlUsername, sqlPassword)
+        
         """
         self.database = mysql.connect(
             host = "localhost",
             user = input("Username: "),
             passwd = input("Password: ")
         ) 
+        """
         self.cursor = self.database.cursor()
-
+        
+        self.cursor.execute("DROP DATABASE {}".format(serviceId))
+        self.createDatabase(serviceId)
         self.verifyDatabase(serviceId)
 
     def startup(self) -> list:
@@ -75,7 +78,8 @@ class DatabaseManager(object):
     def verifyDatabase(self, serviceId):
         """Checks that the database is in the correct format. Otherwise, it creates the database in the correct format."""
         try:
-            self.cursor.execute("USE {}".format(serviceId))
+            print(self.cursor.execute("USE {}".format(serviceId)))
+            print(self.cursor.execute("SHOW DATABASES;"))
         except mysql.Error as err:
             if err.errno == errorcode.ER_BAD_DB_ERROR:
                 self.createDatabase(serviceId)
@@ -87,64 +91,64 @@ class DatabaseManager(object):
         TABLES = {}
 
         TABLES['users'] = (
-            "CREATE TABLE 'users' ("
+            "CREATE TABLE `users` ("
             " 'user_id' int(12) NOT NULL AUTO_INCREMENT,"
-            " password"
-            " username"
+            " password,"
+            " username,"
             " PRIMARY KEY('user_id')"
             ") ENGINE=InnoDB")
         TABLES['notes'] = (
-            "CREATE TABLE 'notes' ("
+            "CREATE TABLE `notes` ("
             " 'note_id' int(12) NOT NULL AUTO_INCREMENT,"
-            " 'user_id' int(12)"
-            " date_made"
-            " lastmod"
-            " notedata"
-            " date"
-            " import"
-            " title"
-            " color"
-            " repeat"
+            " 'user_id' int(12),"
+            " date_made,"
+            " lastmod,"
+            " notedata,"
+            " date,"
+            " import,"
+            " title,"
+            " color,"
+            " repeat,"
             " PRIMARY KEY('note_id')"
             " FOREIGN KEY('user_id') REFERENCES users(user_id)"
             ") ENGINE=InnoDB")
         TABLES['groupcon'] = (
-            "CREATE TABLE 'usercon' ("
-            " 'group_id' NOT NULL"
-            " 'note_id' NOT NULL"
+            "CREATE TABLE `groupcon` ("
+            " 'group_id' NOT NULL,"
+            " 'note_id' NOT NULL,"
             " PRIMARY KEY('group_id', 'note_id')"
             ") ENGINE=InnoDB")
         TABLES['groups'] = (
-            "CREATE TABLE 'groups' ("
+            "CREATE TABLE `groups` ("
             " 'group_id' int(12) NOT NULL AUTO_INCREMENT,"
-            " name"
-            " description"
-            " 'user_id'"
+            " name,"
+            " description,"
+            " 'user_id',"
             " PRIMARY KEY('group_id')"
             " FOREIGN KEY('user_id') REFERENCES users(user_id)"
             ") ENGINE=InnoDB")
         TABLES['groupmem'] = (
-            "CREATE TABLE 'groupmem' ("
-            " 'user_id' NOT NULL"
-            " 'group_id' NOT NULL"
-            " FOREIGN KEY('user_id') REFERENCES users(user_id)"
-            " FOREIGN KEY('group_id') REFERENCES groups(group_id)"
+            "CREATE TABLE `groupmem` ("
+            " 'user_id' NOT NULL,"
+            " 'group_id' NOT NULL,"
+            " FOREIGN KEY('user_id') REFERENCES users(user_id),"
+            " FOREIGN KEY('group_id') REFERENCES groups(group_id),"
             " PRIMARY KEY('user_id', 'group_id')"
             ") ENGINE=InnoDB")
         TABLES['usercon'] = (
-            "CREATE TABLE 'usercon' ("
-            " 'user_id' NOT NULL"
-            " 'note_id' NOT NULL"
-            " FOREIGN KEY('user_id') REFERENCES users(user_id)"
-            " FOREIGN KEY('note_id') REFERENCES notes(note_id)"
+            "CREATE TABLE `usercon` ("
+            " 'user_id' NOT NULL,"
+            " 'note_id' NOT NULL,"
+            " FOREIGN KEY('user_id') REFERENCES users(user_id),"
+            " FOREIGN KEY('note_id') REFERENCES notes(note_id),"
             " PRIMARY KEY('user_id', 'note_id')"
             ") ENGINE=InnoDB")
         TABLES['tags'] = (
-            "CREATE TABLE 'tags' ("
+            "CREATE TABLE `tags` ("
             " 'tag_id' int(12) NOT NULL AUTO_INCREMENT,"
-            " tag_text"
-            " 'note_id'"
-            " PRIMARY KEY('tag_id')"
+            " tag_text,"
+            " 'note_id',"
+            " PRIMARY KEY('tag_id'),"
             " FOREIGN KEY('note_id') REFERENCES notes(note_id)"
             ") ENGINE=InnoDB")
         self.cursor.execute("CREATE DATABASE {} DEFAULT CHARACTER SET 'utf8'".format(serviceId))
@@ -152,7 +156,7 @@ class DatabaseManager(object):
             table_make = TABLES[table]
             try:
                 self.cursor.execute(table_make)
-            except mysql.connector.Error as err:
+            except mysql.Error as err:
                 if err.errno == errorcode.ER_TABLE_EXISTS_ERROR:
                     print("Table already exists")
                 else:
@@ -627,3 +631,8 @@ class Group(DataObjects):
             self.isPrivate == False
         else:
             self.isPrivate == True
+
+def main():
+    dbManager = DatabaseManager()
+
+main()
