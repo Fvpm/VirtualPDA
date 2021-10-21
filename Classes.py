@@ -105,11 +105,11 @@ class DatabaseManager(object):
             " `lastmod` date,"
             " `notedata` longtext,"
             " `date` date,"
-            " `import` enum(1, 2, 3, 4, 5),"
+            " `import` int(2),"
             " `title` varchar(15),"
             " `color` varchar(10),"
-            " `repeat` bool,"
-            " PRIMARY KEY(`note_id`)"
+            " `repeat` boolean,"
+            " PRIMARY KEY(`note_id`),"
             " FOREIGN KEY(`user_id`) REFERENCES `users` (`user_id`)"
             ") ENGINE=InnoDB")
         TABLES['groupcon'] = (
@@ -124,7 +124,7 @@ class DatabaseManager(object):
             " `name` varchar(30),"
             " `description` varchar(180),"
             " `user_id` int(12),"
-            " PRIMARY KEY(`group_id`)"
+            " PRIMARY KEY(`group_id`),"
             " FOREIGN KEY(`user_id`) REFERENCES `users` (`user_id`)"
             ") ENGINE=InnoDB")
         TABLES['groupmem'] = (
