@@ -43,17 +43,10 @@ class DatabaseManager(object):
         keyring.set_password(serviceId, serviceId, sqlUsername)
         keyring.set_password(serviceId, sqlUsername, sqlPassword)
         
-        """
-        self.database = mysql.connect(
-            host = "localhost",
-            user = input("Username: "),
-            passwd = input("Password: ")
-        ) 
-        """
         self.cursor = self.database.cursor()
         
-        self.cursor.execute("DROP DATABASE {}".format(serviceId))
-        self.createDatabase(serviceId)
+        #self.cursor.execute("DROP DATABASE {}".format(serviceId))
+        #self.createDatabase(serviceId)
         self.verifyDatabase(serviceId)
 
     def startup(self) -> list:
@@ -80,6 +73,7 @@ class DatabaseManager(object):
         try:
             print(self.cursor.execute("USE {}".format(serviceId)))
             print(self.cursor.execute("SHOW DATABASES;"))
+            print("Acessed")
         except mysql.Error as err:
             if err.errno == errorcode.ER_BAD_DB_ERROR:
                 self.createDatabase(serviceId)
