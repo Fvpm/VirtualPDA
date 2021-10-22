@@ -72,12 +72,65 @@ class DatabaseManager(object):
         """Checks that the database is in the correct format. Otherwise, it creates the database in the correct format."""
         try:
             print(self.cursor.execute("USE {}".format(serviceId)))
+            self.cursor.execute("SELECT user_id FROM users")
+            self.cursor.reset()
+            self.cursor.execute("SELECT password FROM users")
+            self.cursor.reset()
+            self.cursor.execute("SELECT username FROM users")
+            self.cursor.reset()
+            self.cursor.execute("SELECT note_id FROM notes")
+            self.cursor.reset()
+            self.cursor.execute("SELECT user_id FROM notes")
+            self.cursor.reset()
+            self.cursor.execute("SELECT date_made FROM notes")
+            self.cursor.reset()
+            self.cursor.execute("SELECT lastmod FROM notes")
+            self.cursor.reset()
+            self.cursor.execute("SELECT notedata FROM notes")
+            self.cursor.reset()
+            self.cursor.execute("SELECT date FROM notes")
+            self.cursor.reset()
+            self.cursor.execute("SELECT import FROM notes")
+            self.cursor.reset()
+            self.cursor.execute("SELECT title FROM notes")
+            self.cursor.reset()
+            self.cursor.execute("SELECT color FROM notes")
+            self.cursor.reset()
+            self.cursor.execute("SELECT repeating FROM notes")
+            self.cursor.reset()
+            self.cursor.execute("SELECT group_id FROM groupcon")
+            self.cursor.reset()
+            self.cursor.execute("SELECT note_id FROM groupcon")
+            self.cursor.reset()
+            self.cursor.execute("SELECT group_id FROM usergroups")
+            self.cursor.reset()
+            self.cursor.execute("SELECT name FROM usergroups")
+            self.cursor.reset()
+            self.cursor.execute("SELECT description FROM usergroups")
+            self.cursor.reset()
+            self.cursor.execute("SELECT user_id FROM usergroups")
+            self.cursor.reset()
+            self.cursor.execute("SELECT group_id FROM groupmem")
+            self.cursor.reset()
+            self.cursor.execute("SELECT user_id FROM groupmem")
+            self.cursor.reset()
+            self.cursor.execute("SELECT user_id FROM usercon")
+            self.cursor.reset()
+            self.cursor.execute("SELECT note_id FROM usercon")
+            self.cursor.reset()
+            self.cursor.execute("SELECT tag_id FROM tags")
+            self.cursor.reset()
+            self.cursor.execute("SELECT tag_text FROM tags")
+            self.cursor.reset()
+            self.cursor.execute("SELECT note_id FROM tags")
+            self.cursor.reset()
             print(self.cursor.execute("SHOW DATABASES;"))
             print("Acessed")
         except mysql.Error as err:
             if err.errno == errorcode.ER_BAD_DB_ERROR:
                 self.createDatabase(serviceId)
             else:
+                print(err)
                 print("Incorrect database")
         
     def createDatabase(self, serviceId):
@@ -102,18 +155,12 @@ class DatabaseManager(object):
             " `import` int(2),"
             " `title` varchar(15),"
             " `color` varchar(10),"
-            " `repeat` boolean,"
+            " `repeating` boolean,"
             " PRIMARY KEY(`note_id`),"
             " FOREIGN KEY(`user_id`) REFERENCES `users` (`user_id`)"
             ") ENGINE=InnoDB")
-        TABLES['groupcon'] = (
-            "CREATE TABLE `groupcon` ("
-            " `group_id` int(12) NOT NULL,"
-            " `note_id` int(12) NOT NULL,"
-            " PRIMARY KEY(`group_id`, `note_id`)"
-            ") ENGINE=InnoDB")
-        TABLES['groups'] = (
-            "CREATE TABLE `groups` ("
+        TABLES['usergroups'] = (
+            "CREATE TABLE `usergroups` ("
             " `group_id` int(12) NOT NULL AUTO_INCREMENT,"
             " `name` varchar(30),"
             " `description` varchar(180),"
@@ -121,12 +168,20 @@ class DatabaseManager(object):
             " PRIMARY KEY(`group_id`),"
             " FOREIGN KEY(`user_id`) REFERENCES `users` (`user_id`)"
             ") ENGINE=InnoDB")
+        TABLES['groupcon'] = (
+            "CREATE TABLE `groupcon` ("
+            " `group_id` int(12) NOT NULL,"
+            " `note_id` int(12) NOT NULL,"
+            " FOREIGN KEY(`group_id`) REFERENCES `usergroups` (`group_id`),"
+            " FOREIGN KEY(`note_id`) REFERENCES `notes` (`note_id`),"
+            " PRIMARY KEY(`group_id`, `note_id`)"
+            ") ENGINE=InnoDB")
         TABLES['groupmem'] = (
             "CREATE TABLE `groupmem` ("
             " `user_id` int(12) NOT NULL,"
             " `group_id` int(12) NOT NULL,"
             " FOREIGN KEY(`user_id`) REFERENCES `users` (`user_id`),"
-            " FOREIGN KEY(`group_id`) REFERENCES `groups` (`group_id`),"
+            " FOREIGN KEY(`group_id`) REFERENCES `usergroups` (`group_id`),"
             " PRIMARY KEY(`user_id`, `group_id`)"
             ") ENGINE=InnoDB")
         TABLES['usercon'] = (
@@ -146,6 +201,7 @@ class DatabaseManager(object):
             " FOREIGN KEY(`note_id`) REFERENCES `notes` (`note_id`)"
             ") ENGINE=InnoDB")
         self.cursor.execute("CREATE DATABASE {} DEFAULT CHARACTER SET 'utf8'".format(serviceId))
+        self.cursor.execute("USE {}".format(serviceId))
         for table in TABLES:
             table_make = TABLES[table]
             try:
@@ -186,7 +242,28 @@ class DatabaseManager(object):
                 else:
                     if type(note[2]) is not str:
                         note[2] = str(note[2])
-            self.noteManager.addNote(note[0], note[1], note[2])
+                    else:
+                        if type(note[3]) is not int:
+                            note[3] = int(note[3])
+                        else:
+                            if type(note[4]) is not str:
+                                note[4] = str(note[4])
+                            else:
+                                if type(note[5]) is not str:
+                                    note[5] = str(note[5])
+                                else:
+                                    if type(note[6]) is not int:
+                                        note[6] = int(note[6])
+                                    else:
+                                        if type(note[7]) is not str:
+                                            note[7] = str(note[7])
+                                        else:
+                                            if type(note[8]) is not str:
+                                                note[8] = str(note[8])
+                                            else:
+                                                if type(note[9]) is not str:
+                                                    note[9] = str(note[9])
+            self.noteManager.addNote(note[0], note[1], note[2], note[3], note[4], note[5], note[6], note[7], note[8], note[9])
         pass
 
     def loadGroups(self):
@@ -212,7 +289,7 @@ class DatabaseManager(object):
         delete_user = ("DELETE FROM users WHERE user_id = %s")
         delete_usergroup=("DELETE FROM groupmem WHERE user_id = %s")
         delete_usernote=("DELETE FROM usercon WHERE user_id = %s")
-        delete_usergrouping=("DELETE FROM groups WHERE user_id = %s")
+        delete_usergrouping=("DELETE FROM usergroups WHERE user_id = %s")
         delete_usernotes=("DELETE FROM notes WHERE user_id = %s")
         add_newuser=("INSERT INTO users"
                      "(user_id, username, password)"
@@ -249,8 +326,8 @@ class DatabaseManager(object):
                         "SET lastmod = %s"
                         "WHERE note_id = %s")
         add_note = ("INSERT INTO notes"
-                        "(note_id, user_id, date_made, lastmod, notedata, date, import, title, color, repeat)"
-                        "VALUES (%(note_id)s, %(user_id)s, %(date_made)s, %(lastmod)s, %(notedata)s, %(date)s, %(import)s, %(title)s, %(color)s, %(repeat)s)")
+                        "(note_id, user_id, date_made, lastmod, notedata, date, import, title, color, repeating)"
+                        "VALUES (%(note_id)s, %(user_id)s, %(date_made)s, %(lastmod)s, %(notedata)s, %(date)s, %(import)s, %(title)s, %(color)s, %(repeating)s)")
         add_usercon = ("INSERT INTO usercon"
                         "(user_id, note_id)"
                         "VALUES (%(user_id)s, %(note_id)s)")
@@ -271,7 +348,7 @@ class DatabaseManager(object):
         
     def saveGroups(self, group):
         #Not fully implemented yet
-        new_group = ("INSERT INTO groups"
+        new_group = ("INSERT INTO usergroups"
                      "(group_id, name, description, user_id, privacy)"
                      "VALUES (%(group_id)s, %(name)s, %(description)s, %(user_id)s, %(privacy)s)")
         add_groupmem = ("INSERT INTO groupmem"
@@ -280,17 +357,17 @@ class DatabaseManager(object):
         add_groupcon = ("INSERT INTO groupcon"
                         "(group_id, note_id)"
                         "VALUES (%(group_id)s, %(note_id)s)")
-        delete_group = ("DELETE FROM groups WHERE group_id = %s")
+        delete_group = ("DELETE FROM usergroups WHERE group_id = %s")
         delete_groupmem=("DELETE FROM groupmem WHERE group_id = %s")
         delete_groupnote=("DELETE FROM groupcon WHERE group_id = %s")
-        modify_privacy = ("UPDATE groups"
+        modify_privacy = ("UPDATE usergroups"
                        "SET privacy = %s"
                        "WHERE group_id = %s")
-        modify_name = ("UPDATE groups"
+        modify_name = ("UPDATE usergroups"
                        "SET name = %s"
                        "WHERE group_id = %s")
         remove_user=("DELETE FROM groupmem WHERE user_id = %s")
-        modify_desc = ("UPDATE groups"
+        modify_desc = ("UPDATE usergroups"
                        "SET description = %s"
                        "WHERE group_id = %s")
         remove_self=("DELETE FROM groupmem WHERE user_id = %s")
@@ -344,7 +421,7 @@ class NoteManager(object):
         self.guiManager = _guiManager
     def addNote(self, noteId, owner, dateMade, lastModified, text, eventDate, importance, title, color, repeating):
         newNote = Note()
-        self.noteList.append(newnote)
+        self.noteList.append(newNote)
 
 
 class GroupManager(object):
