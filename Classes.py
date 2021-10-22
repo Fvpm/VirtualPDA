@@ -237,14 +237,14 @@ class DatabaseManager(object):
             if type(note[0]) is not int:
                 note[0] = int(note[0])
             else:
-                if type(note[1]) is not str:
-                    note[1] = str(note[1])
+                if type(note[1]) is not int:
+                    note[1] = int(note[1])
                 else:
                     if type(note[2]) is not str:
                         note[2] = str(note[2])
                     else:
-                        if type(note[3]) is not int:
-                            note[3] = int(note[3])
+                        if type(note[3]) is not str:
+                            note[3] = str(note[3])
                         else:
                             if type(note[4]) is not str:
                                 note[4] = str(note[4])
@@ -264,11 +264,25 @@ class DatabaseManager(object):
                                                 if type(note[9]) is not str:
                                                     note[9] = str(note[9])
             self.noteManager.addNote(note[0], note[1], note[2], note[3], note[4], note[5], note[6], note[7], note[8], note[9])
-        pass
 
     def loadGroups(self):
         """Will load database data into self.groupManager"""
-        pass
+        loadgroups = ("SELECT * FROM usergroups")
+        self.cursor.execute(loadgroups)
+        load = self.cursor.fetchall()
+        for group in load:
+            if type(group[0]) is not int:
+                group[0] = int(group[0])
+            else:
+                if type(group[1]) is not str:
+                    group[1] = str(group[1])
+                else:
+                    if type(group[2]) is not str:
+                        group[2] = str(group[2])
+                    else:
+                        if type(group[3]) is not int:
+                            group[3] = int(group[3])
+            self.groupManager.addGroup(group[0], group[1], group[2], group[3])
     
     def saveDatabase(self):
         """Saves and updates the database"""
@@ -420,7 +434,7 @@ class NoteManager(object):
         self.groupManager = _groupManager
         self.guiManager = _guiManager
     def addNote(self, noteId, owner, dateMade, lastModified, text, eventDate, importance, title, color, repeating):
-        newNote = Note()
+        newNote = Note(noteId, owner, dateMade, lastModified, text, eventDate, importance, title, color, repeating)
         self.noteList.append(newNote)
 
 
@@ -435,6 +449,9 @@ class GroupManager(object):
         self.guiManager = _guiManager
     def userJoinGroup(self, user, group):
         self.userManager.userJoinGroup(user,group)
+    def addGroup(self, groupId, groupname, description, owner):
+        newGroup = Group(groupId, groupname, description, owner)
+        self.groupList.append(newGroup)
 
 class GUIManager(object):
     def __init__(self):
