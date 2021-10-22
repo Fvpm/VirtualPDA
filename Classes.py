@@ -174,6 +174,19 @@ class DatabaseManager(object):
 
     def loadNotes(self):
         """Will load database data into self.noteManager"""
+        loadnotes = ("SELECT * FROM notes")
+        self.cursor.execute(loadnotes)
+        load = self.cursor.fetchall()
+        for note in load:
+            if type(note[0]) is not int:
+                note[0] = int(note[0])
+            else:
+                if type(note[1]) is not str:
+                    note[1] = str(note[1])
+                else:
+                    if type(note[2]) is not str:
+                        note[2] = str(note[2])
+            self.noteManager.addNote(note[0], note[1], note[2])
         pass
 
     def loadGroups(self):
@@ -328,7 +341,10 @@ class NoteManager(object):
         self.databaseManager = _databaseManager
         self.userManager = _userManager
         self.groupManager = _groupManager
-        self.guiManager = _guiManager    
+        self.guiManager = _guiManager
+    def addNote(self, noteId, owner, dateMade, lastModified, text, eventDate, importance, title, color, repeating):
+        newNote = Note()
+        self.noteList.append(newnote)
 
 
 class GroupManager(object):
