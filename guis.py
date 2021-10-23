@@ -160,11 +160,41 @@ class HomeGUI(AbstractGUI):
         backButton = Button(self.window, text = "<-", command = self.backToLogin)
         backButton.pack(side = TOP, anchor = "nw")
 
-        menubar = Menu(self.window)
-        userMenu = Menu(menubar, tearoff=0)
+        self.menubar = Menu(self.window)
+        self.emptyMenubar = Menu(self.window)
+
+        userMenu = Menu(self.menubar, tearoff=0)
         userMenu.add_command(label="Logout", command=self.backToLogin)
-        userMenu.add_command(label="Change Password", command = self.openPasswordChangeWindow()
-        userMenu.add_command(label="Groups" command = self.openGroupsWindow()
+        userMenu.add_command(label="Change Password", command = self.openPasswordChangeWindow)
+        userMenu.add_command(label="Groups",command = self.openGroupsWindow)
+        self.menubar.add_cascade(label="User", menu=userMenu)
+
+        memoMenu = Menu(self.menubar, tearoff=0)
+        memoMenu.add_command(label="New", command=self.createNewFile)
+        memoMenu.add_command(label="Search", command=self.openSearchWindow)
+        memoMenu.add_command(label="Delete", command=self.deleteCurrentFile)
+        memoMenu.add_command(label="Share", command=self.openShareWindow)
+        self.menubar.add_cascade(label="Memo", menu=memoMenu)
+
+    def show(self):
+        super().show()
+        self.window.config(menu=self.menubar)
+
+    def hide(self):
+        super().hide()
+        self.window.config(menu=self.emptyMenubar)
+
+    def openShareWindow(self):
+        pass
+
+    def deleteCurrentFile(self):
+        pass
+
+    def openSearchWindow(self):
+        pass
+
+    def createNewFile(self):
+        pass
 
     def backToLogin(self):
         self.guiManager.openWindow("login")
