@@ -43,18 +43,21 @@ class DatabaseManager(object):
         keyring.set_password(serviceId, serviceId, sqlUsername)
         keyring.set_password(serviceId, sqlUsername, sqlPassword)
         
-        """
-        self.database = mysql.connect(
-            host = "localhost",
-            user = input("Username: "),
-            passwd = input("Password: ")
-        ) 
-        """
-        self.cursor = self.database.cursor()
+        self.cursor = self.database.cursor(buffered=True)
         
-        self.cursor.execute("DROP DATABASE {}".format(serviceId))
-        self.createDatabase(serviceId)
+        #self.cursor.execute("DROP DATABASE {}".format(serviceId))
+        #self.createDatabase(serviceId)
         self.verifyDatabase(serviceId)
+        #Code placed here for testing purposes
+        add_newuser=("INSERT INTO users"
+                     "(user_id, password, username)"
+                     "VALUES (%s, %s, %s)")
+        self.cursor.execute(add_newuser, (1, "Alex", "x1pho3nc0rp"))
+        self.startup()
+        print(self.userManager.userList[0].username)
+        print(self.userManager.userList[0].password)
+        print(self.userManager.userList[0].id)
+        #End of test purpose code
 
     def startup(self) -> list:
         """Creates managers and loads in their data from database. Returns list of [userManager, noteManager, groupManger, and guiManager]"""
@@ -71,19 +74,47 @@ class DatabaseManager(object):
 
         #load data from database
         self.loadUsers()
-        self.loadNotes()
-        self.loadGroups()
+        #self.loadNotes()
+        #self.loadGroups()
         return [self.userManager, self.noteManager, self.groupManager, self.guiManager]
 
     def verifyDatabase(self, serviceId):
         """Checks that the database is in the correct format. Otherwise, it creates the database in the correct format."""
         try:
             print(self.cursor.execute("USE {}".format(serviceId)))
+            self.cursor.execute("SELECT user_id FROM users")
+            self.cursor.execute("SELECT password FROM users")
+            self.cursor.execute("SELECT username FROM users")
+            self.cursor.execute("SELECT note_id FROM notes")
+            self.cursor.execute("SELECT user_id FROM notes")
+            self.cursor.execute("SELECT date_made FROM notes")
+            self.cursor.execute("SELECT lastmod FROM notes")
+            self.cursor.execute("SELECT notedata FROM notes")
+            self.cursor.execute("SELECT date FROM notes")
+            self.cursor.execute("SELECT import FROM notes")
+            self.cursor.execute("SELECT title FROM notes")
+            self.cursor.execute("SELECT color FROM notes")
+            self.cursor.execute("SELECT repeating FROM notes")
+            self.cursor.execute("SELECT group_id FROM groupcon")
+            self.cursor.execute("SELECT note_id FROM groupcon")
+            self.cursor.execute("SELECT group_id FROM usergroups")
+            self.cursor.execute("SELECT name FROM usergroups")
+            self.cursor.execute("SELECT description FROM usergroups")
+            self.cursor.execute("SELECT user_id FROM usergroups")
+            self.cursor.execute("SELECT group_id FROM groupmem")
+            self.cursor.execute("SELECT user_id FROM groupmem")
+            self.cursor.execute("SELECT user_id FROM usercon")
+            self.cursor.execute("SELECT note_id FROM usercon")
+            self.cursor.execute("SELECT tag_id FROM tags")
+            self.cursor.execute("SELECT tag_text FROM tags")
+            self.cursor.execute("SELECT note_id FROM tags")
             print(self.cursor.execute("SHOW DATABASES;"))
+            print("Acessed")
         except mysql.Error as err:
             if err.errno == errorcode.ER_BAD_DB_ERROR:
                 self.createDatabase(serviceId)
             else:
+                print(err)
                 print("Incorrect database")
         
     def createDatabase(self, serviceId):
@@ -92,66 +123,69 @@ class DatabaseManager(object):
 
         TABLES['users'] = (
             "CREATE TABLE `users` ("
-            " 'user_id' int(12) NOT NULL AUTO_INCREMENT,"
-            " password,"
-            " username,"
-            " PRIMARY KEY('user_id')"
+            " `user_id` int(12) NOT NULL AUTO_INCREMENT,"
+            " `password` varchar(16),"
+            " `username` varchar(16),"
+            " PRIMARY KEY(`user_id`)"
             ") ENGINE=InnoDB")
         TABLES['notes'] = (
             "CREATE TABLE `notes` ("
-            " 'note_id' int(12) NOT NULL AUTO_INCREMENT,"
-            " 'user_id' int(12),"
-            " date_made,"
-            " lastmod,"
-            " notedata,"
-            " date,"
-            " import,"
-            " title,"
-            " color,"
-            " repeat,"
-            " PRIMARY KEY('note_id')"
-            " FOREIGN KEY('user_id') REFERENCES users(user_id)"
+            " `note_id` int(12) NOT NULL AUTO_INCREMENT,"
+            " `user_id` int(12),"
+            " `date_made` date,"
+            " `lastmod` date,"
+            " `notedata` longtext,"
+            " `date` date,"
+            " `import` int(2),"
+            " `title` varchar(15),"
+            " `color` varchar(10),"
+            " `repeating` boolean,"
+            " PRIMARY KEY(`note_id`),"
+            " FOREIGN KEY(`user_id`) REFERENCES `users` (`user_id`)"
+            ") ENGINE=InnoDB")
+        TABLES['usergroups'] = (
+            "CREATE TABLE `usergroups` ("
+            " `group_id` int(12) NOT NULL AUTO_INCREMENT,"
+            " `name` varchar(30),"
+            " `description` varchar(180),"
+            " `user_id` int(12),"
+            " PRIMARY KEY(`group_id`),"
+            " FOREIGN KEY(`user_id`) REFERENCES `users` (`user_id`)"
             ") ENGINE=InnoDB")
         TABLES['groupcon'] = (
             "CREATE TABLE `groupcon` ("
-            " 'group_id' NOT NULL,"
-            " 'note_id' NOT NULL,"
-            " PRIMARY KEY('group_id', 'note_id')"
-            ") ENGINE=InnoDB")
-        TABLES['groups'] = (
-            "CREATE TABLE `groups` ("
-            " 'group_id' int(12) NOT NULL AUTO_INCREMENT,"
-            " name,"
-            " description,"
-            " 'user_id',"
-            " PRIMARY KEY('group_id')"
-            " FOREIGN KEY('user_id') REFERENCES users(user_id)"
+            " `group_id` int(12) NOT NULL,"
+            " `note_id` int(12) NOT NULL,"
+            " FOREIGN KEY(`group_id`) REFERENCES `usergroups` (`group_id`),"
+            " FOREIGN KEY(`note_id`) REFERENCES `notes` (`note_id`),"
+            " PRIMARY KEY(`group_id`, `note_id`)"
             ") ENGINE=InnoDB")
         TABLES['groupmem'] = (
             "CREATE TABLE `groupmem` ("
-            " 'user_id' NOT NULL,"
-            " 'group_id' NOT NULL,"
-            " FOREIGN KEY('user_id') REFERENCES users(user_id),"
-            " FOREIGN KEY('group_id') REFERENCES groups(group_id),"
-            " PRIMARY KEY('user_id', 'group_id')"
+            " `user_id` int(12) NOT NULL,"
+            " `group_id` int(12) NOT NULL,"
+            " FOREIGN KEY(`user_id`) REFERENCES `users` (`user_id`),"
+            " FOREIGN KEY(`group_id`) REFERENCES `usergroups` (`group_id`),"
+            " PRIMARY KEY(`user_id`, `group_id`)"
             ") ENGINE=InnoDB")
         TABLES['usercon'] = (
             "CREATE TABLE `usercon` ("
-            " 'user_id' NOT NULL,"
-            " 'note_id' NOT NULL,"
-            " FOREIGN KEY('user_id') REFERENCES users(user_id),"
-            " FOREIGN KEY('note_id') REFERENCES notes(note_id),"
-            " PRIMARY KEY('user_id', 'note_id')"
+            " `user_id` int(12) NOT NULL,"
+            " `note_id` int(12) NOT NULL,"
+            " FOREIGN KEY(`user_id`) REFERENCES `users` (`user_id`),"
+            " FOREIGN KEY(`note_id`) REFERENCES `notes` (`note_id`),"
+            " PRIMARY KEY(`user_id`, `note_id`)"
             ") ENGINE=InnoDB")
         TABLES['tags'] = (
             "CREATE TABLE `tags` ("
-            " 'tag_id' int(12) NOT NULL AUTO_INCREMENT,"
-            " tag_text,"
-            " 'note_id',"
-            " PRIMARY KEY('tag_id'),"
-            " FOREIGN KEY('note_id') REFERENCES notes(note_id)"
+            " `tag_id` int(12) NOT NULL AUTO_INCREMENT,"
+            " `tag_text` varchar(16),"
+            " `note_id` int(12),"
+            " PRIMARY KEY(`tag_id`),"
+            " FOREIGN KEY(`note_id`) REFERENCES `notes` (`note_id`)"
             ") ENGINE=InnoDB")
         self.cursor.execute("CREATE DATABASE {} DEFAULT CHARACTER SET 'utf8'".format(serviceId))
+        self.cursor.execute("USE {}".format(serviceId))
         for table in TABLES:
             table_make = TABLES[table]
             try:
@@ -180,11 +214,59 @@ class DatabaseManager(object):
 
     def loadNotes(self):
         """Will load database data into self.noteManager"""
-        pass
+        loadnotes = ("SELECT * FROM notes")
+        self.cursor.execute(loadnotes)
+        load = self.cursor.fetchall()
+        for note in load:
+            if type(note[0]) is not int:
+                note[0] = int(note[0])
+            else:
+                if type(note[1]) is not int:
+                    note[1] = int(note[1])
+                else:
+                    if type(note[2]) is not str:
+                        note[2] = str(note[2])
+                    else:
+                        if type(note[3]) is not str:
+                            note[3] = str(note[3])
+                        else:
+                            if type(note[4]) is not str:
+                                note[4] = str(note[4])
+                            else:
+                                if type(note[5]) is not str:
+                                    note[5] = str(note[5])
+                                else:
+                                    if type(note[6]) is not int:
+                                        note[6] = int(note[6])
+                                    else:
+                                        if type(note[7]) is not str:
+                                            note[7] = str(note[7])
+                                        else:
+                                            if type(note[8]) is not str:
+                                                note[8] = str(note[8])
+                                            else:
+                                                if type(note[9]) is not str:
+                                                    note[9] = str(note[9])
+            self.noteManager.addNote(note[0], note[1], note[2], note[3], note[4], note[5], note[6], note[7], note[8], note[9])
 
     def loadGroups(self):
         """Will load database data into self.groupManager"""
-        pass
+        loadgroups = ("SELECT * FROM usergroups")
+        self.cursor.execute(loadgroups)
+        load = self.cursor.fetchall()
+        for group in load:
+            if type(group[0]) is not int:
+                group[0] = int(group[0])
+            else:
+                if type(group[1]) is not str:
+                    group[1] = str(group[1])
+                else:
+                    if type(group[2]) is not str:
+                        group[2] = str(group[2])
+                    else:
+                        if type(group[3]) is not int:
+                            group[3] = int(group[3])
+            self.groupManager.addGroup(group[0], group[1], group[2], group[3])
     
     def saveDatabase(self):
         """Saves and updates the database"""
@@ -205,7 +287,7 @@ class DatabaseManager(object):
         delete_user = ("DELETE FROM users WHERE user_id = %s")
         delete_usergroup=("DELETE FROM groupmem WHERE user_id = %s")
         delete_usernote=("DELETE FROM usercon WHERE user_id = %s")
-        delete_usergrouping=("DELETE FROM groups WHERE user_id = %s")
+        delete_usergrouping=("DELETE FROM usergroups WHERE user_id = %s")
         delete_usernotes=("DELETE FROM notes WHERE user_id = %s")
         add_newuser=("INSERT INTO users"
                      "(user_id, username, password)"
@@ -242,8 +324,8 @@ class DatabaseManager(object):
                         "SET lastmod = %s"
                         "WHERE note_id = %s")
         add_note = ("INSERT INTO notes"
-                        "(note_id, user_id, date_made, lastmod, notedata, date, import, title, color, repeat)"
-                        "VALUES (%(note_id)s, %(user_id)s, %(date_made)s, %(lastmod)s, %(notedata)s, %(date)s, %(import)s, %(title)s, %(color)s, %(repeat)s)")
+                        "(note_id, user_id, date_made, lastmod, notedata, date, import, title, color, repeating)"
+                        "VALUES (%(note_id)s, %(user_id)s, %(date_made)s, %(lastmod)s, %(notedata)s, %(date)s, %(import)s, %(title)s, %(color)s, %(repeating)s)")
         add_usercon = ("INSERT INTO usercon"
                         "(user_id, note_id)"
                         "VALUES (%(user_id)s, %(note_id)s)")
@@ -264,7 +346,7 @@ class DatabaseManager(object):
         
     def saveGroups(self, group):
         #Not fully implemented yet
-        new_group = ("INSERT INTO groups"
+        new_group = ("INSERT INTO usergroups"
                      "(group_id, name, description, user_id, privacy)"
                      "VALUES (%(group_id)s, %(name)s, %(description)s, %(user_id)s, %(privacy)s)")
         add_groupmem = ("INSERT INTO groupmem"
@@ -273,17 +355,17 @@ class DatabaseManager(object):
         add_groupcon = ("INSERT INTO groupcon"
                         "(group_id, note_id)"
                         "VALUES (%(group_id)s, %(note_id)s)")
-        delete_group = ("DELETE FROM groups WHERE group_id = %s")
+        delete_group = ("DELETE FROM usergroups WHERE group_id = %s")
         delete_groupmem=("DELETE FROM groupmem WHERE group_id = %s")
         delete_groupnote=("DELETE FROM groupcon WHERE group_id = %s")
-        modify_privacy = ("UPDATE groups"
+        modify_privacy = ("UPDATE usergroups"
                        "SET privacy = %s"
                        "WHERE group_id = %s")
-        modify_name = ("UPDATE groups"
+        modify_name = ("UPDATE usergroups"
                        "SET name = %s"
                        "WHERE group_id = %s")
         remove_user=("DELETE FROM groupmem WHERE user_id = %s")
-        modify_desc = ("UPDATE groups"
+        modify_desc = ("UPDATE usergroups"
                        "SET description = %s"
                        "WHERE group_id = %s")
         remove_self=("DELETE FROM groupmem WHERE user_id = %s")
@@ -334,7 +416,10 @@ class NoteManager(object):
         self.databaseManager = _databaseManager
         self.userManager = _userManager
         self.groupManager = _groupManager
-        self.guiManager = _guiManager    
+        self.guiManager = _guiManager
+    def addNote(self, noteId, owner, dateMade, lastModified, text, eventDate, importance, title, color, repeating):
+        newNote = Note(noteId, owner, dateMade, lastModified, text, eventDate, importance, title, color, repeating)
+        self.noteList.append(newNote)
 
 
 class GroupManager(object):
@@ -348,6 +433,9 @@ class GroupManager(object):
         self.guiManager = _guiManager
     def userJoinGroup(self, user, group):
         self.userManager.userJoinGroup(user,group)
+    def addGroup(self, groupId, groupname, description, owner):
+        newGroup = Group(groupId, groupname, description, owner)
+        self.groupList.append(newGroup)
 
 class GUIManager(object):
     def __init__(self):
