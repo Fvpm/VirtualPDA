@@ -43,11 +43,21 @@ class DatabaseManager(object):
         keyring.set_password(serviceId, serviceId, sqlUsername)
         keyring.set_password(serviceId, sqlUsername, sqlPassword)
         
-        self.cursor = self.database.cursor()
+        self.cursor = self.database.cursor(buffered=True)
         
         #self.cursor.execute("DROP DATABASE {}".format(serviceId))
         #self.createDatabase(serviceId)
         self.verifyDatabase(serviceId)
+        #Code placed here for testing purposes
+        add_newuser=("INSERT INTO users"
+                     "(user_id, password, username)"
+                     "VALUES (%s, %s, %s)")
+        self.cursor.execute(add_newuser, (1, "Alex", "x1pho3nc0rp"))
+        self.startup()
+        print(self.userManager.userList[0].username)
+        print(self.userManager.userList[0].password)
+        print(self.userManager.userList[0].id)
+        #End of test purpose code
 
     def startup(self) -> list:
         """Creates managers and loads in their data from database. Returns list of [userManager, noteManager, groupManger, and guiManager]"""
@@ -64,8 +74,8 @@ class DatabaseManager(object):
 
         #load data from database
         self.loadUsers()
-        self.loadNotes()
-        self.loadGroups()
+        #self.loadNotes()
+        #self.loadGroups()
         return [self.userManager, self.noteManager, self.groupManager, self.guiManager]
 
     def verifyDatabase(self, serviceId):
@@ -73,57 +83,31 @@ class DatabaseManager(object):
         try:
             print(self.cursor.execute("USE {}".format(serviceId)))
             self.cursor.execute("SELECT user_id FROM users")
-            self.cursor.reset()
             self.cursor.execute("SELECT password FROM users")
-            self.cursor.reset()
             self.cursor.execute("SELECT username FROM users")
-            self.cursor.reset()
             self.cursor.execute("SELECT note_id FROM notes")
-            self.cursor.reset()
             self.cursor.execute("SELECT user_id FROM notes")
-            self.cursor.reset()
             self.cursor.execute("SELECT date_made FROM notes")
-            self.cursor.reset()
             self.cursor.execute("SELECT lastmod FROM notes")
-            self.cursor.reset()
             self.cursor.execute("SELECT notedata FROM notes")
-            self.cursor.reset()
             self.cursor.execute("SELECT date FROM notes")
-            self.cursor.reset()
             self.cursor.execute("SELECT import FROM notes")
-            self.cursor.reset()
             self.cursor.execute("SELECT title FROM notes")
-            self.cursor.reset()
             self.cursor.execute("SELECT color FROM notes")
-            self.cursor.reset()
             self.cursor.execute("SELECT repeating FROM notes")
-            self.cursor.reset()
             self.cursor.execute("SELECT group_id FROM groupcon")
-            self.cursor.reset()
             self.cursor.execute("SELECT note_id FROM groupcon")
-            self.cursor.reset()
             self.cursor.execute("SELECT group_id FROM usergroups")
-            self.cursor.reset()
             self.cursor.execute("SELECT name FROM usergroups")
-            self.cursor.reset()
             self.cursor.execute("SELECT description FROM usergroups")
-            self.cursor.reset()
             self.cursor.execute("SELECT user_id FROM usergroups")
-            self.cursor.reset()
             self.cursor.execute("SELECT group_id FROM groupmem")
-            self.cursor.reset()
             self.cursor.execute("SELECT user_id FROM groupmem")
-            self.cursor.reset()
             self.cursor.execute("SELECT user_id FROM usercon")
-            self.cursor.reset()
             self.cursor.execute("SELECT note_id FROM usercon")
-            self.cursor.reset()
             self.cursor.execute("SELECT tag_id FROM tags")
-            self.cursor.reset()
             self.cursor.execute("SELECT tag_text FROM tags")
-            self.cursor.reset()
             self.cursor.execute("SELECT note_id FROM tags")
-            self.cursor.reset()
             print(self.cursor.execute("SHOW DATABASES;"))
             print("Acessed")
         except mysql.Error as err:
