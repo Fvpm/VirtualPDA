@@ -290,8 +290,8 @@ class DatabaseManager(object):
         delete_usergrouping=("DELETE FROM usergroups WHERE user_id = %s")
         delete_usernotes=("DELETE FROM notes WHERE user_id = %s")
         add_newuser=("INSERT INTO users"
-                     "(user_id, username, password)"
-                     "VALUES (%(user_id)s, %(username)s, %(password)s)")
+                     "(user_id, password, username)"
+                     "VALUES (%s, %s, %s)")
         if user.update == True:
             self.cursor.execute(modify_pass, user.password, user.id)
             self.cursor.execute(modify_user, user.username, user.id)
@@ -308,7 +308,7 @@ class DatabaseManager(object):
         #Not fully implemented yet
         add_usercon = ("INSERT INTO usercon"
                         "(user_id, note_id)"
-                        "VALUES (%(user_id)s, %(note_id)s)")
+                        "VALUES (%s, %s)")
         delete_note = ("DELETE FROM notes WHERE note_id = %s")
         delete_notegroup=("DELETE FROM groupcon WHERE note_id = %s")
         delete_noteuser=("DELETE FROM usercon WHERE note_id = %s")
@@ -316,7 +316,7 @@ class DatabaseManager(object):
         remove_tag = ("DELETE FROM tags WHERE tag_id = %s AND note_id = %s")
         add_tag = ("INSERT INTO tags"
                    "(tag_id, tag_text, note_id)"
-                   "VALUES (%(tag_id)s, %(tag_text)s, %(note_id)s)")
+                   "VALUES (%s, %s, %s)")
         update_notedata = ("UPDATE notes"
                         "SET notedata = %s"
                         "WHERE note_id = %s")
@@ -325,10 +325,10 @@ class DatabaseManager(object):
                         "WHERE note_id = %s")
         add_note = ("INSERT INTO notes"
                         "(note_id, user_id, date_made, lastmod, notedata, date, import, title, color, repeating)"
-                        "VALUES (%(note_id)s, %(user_id)s, %(date_made)s, %(lastmod)s, %(notedata)s, %(date)s, %(import)s, %(title)s, %(color)s, %(repeating)s)")
+                        "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)")
         add_usercon = ("INSERT INTO usercon"
                         "(user_id, note_id)"
-                        "VALUES (%(user_id)s, %(note_id)s)")
+                        "VALUES (%s, %s)")
         if note.update == True:
             #self.cursor.execute(add_usercon, shareuser, note.id) More work needed
             #self.cursor.execute(remove_tag, oldtag[0], note.id) Conditions needed
@@ -348,13 +348,13 @@ class DatabaseManager(object):
         #Not fully implemented yet
         new_group = ("INSERT INTO usergroups"
                      "(group_id, name, description, user_id, privacy)"
-                     "VALUES (%(group_id)s, %(name)s, %(description)s, %(user_id)s, %(privacy)s)")
+                     "VALUES (%s, %s, %s, %s, %s)")
         add_groupmem = ("INSERT INTO groupmem"
                         "(group_id, user_id)"
-                        "VALUES (%(group_id)s, %(user_id)s)")
+                        "VALUES (%s, %s)")
         add_groupcon = ("INSERT INTO groupcon"
                         "(group_id, note_id)"
-                        "VALUES (%(group_id)s, %(note_id)s)")
+                        "VALUES (%s, %s)")
         delete_group = ("DELETE FROM usergroups WHERE group_id = %s")
         delete_groupmem=("DELETE FROM groupmem WHERE group_id = %s")
         delete_groupnote=("DELETE FROM groupcon WHERE group_id = %s")
