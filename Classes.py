@@ -204,12 +204,10 @@ class DatabaseManager(object):
         for user in load:
             if type(user[0]) is not int:
                 user[0] = int(user[0])
-            else:
-                if type(user[1]) is not str:
-                    user[1] = str(user[1])
-                else:
-                    if type(user[2]) is not str:
-                        user[2] = str(user[2])
+            if type(user[1]) is not str:
+                user[1] = str(user[1])
+            if type(user[2]) is not str:
+                user[2] = str(user[2])
             self.userManager.addUser(user[0], user[1], user[2])
 
     def loadNotes(self):
@@ -220,33 +218,24 @@ class DatabaseManager(object):
         for note in load:
             if type(note[0]) is not int:
                 note[0] = int(note[0])
-            else:
-                if type(note[1]) is not int:
-                    note[1] = int(note[1])
-                else:
-                    if type(note[2]) is not str:
-                        note[2] = str(note[2])
-                    else:
-                        if type(note[3]) is not str:
-                            note[3] = str(note[3])
-                        else:
-                            if type(note[4]) is not str:
-                                note[4] = str(note[4])
-                            else:
-                                if type(note[5]) is not str:
-                                    note[5] = str(note[5])
-                                else:
-                                    if type(note[6]) is not int:
-                                        note[6] = int(note[6])
-                                    else:
-                                        if type(note[7]) is not str:
-                                            note[7] = str(note[7])
-                                        else:
-                                            if type(note[8]) is not str:
-                                                note[8] = str(note[8])
-                                            else:
-                                                if type(note[9]) is not str:
-                                                    note[9] = str(note[9])
+            if type(note[1]) is not int:
+                note[1] = int(note[1])
+            if type(note[2]) is not str:
+                note[2] = str(note[2])
+            if type(note[3]) is not str:
+                note[3] = str(note[3])
+            if type(note[4]) is not str:
+                note[4] = str(note[4])
+            if type(note[5]) is not str:
+                note[5] = str(note[5])
+            if type(note[6]) is not int:
+                note[6] = int(note[6])
+            if type(note[7]) is not str:
+                note[7] = str(note[7])
+            if type(note[8]) is not str:
+                note[8] = str(note[8])
+            if type(note[9]) is not str:
+                note[9] = str(note[9])
             self.noteManager.addNote(note[0], note[1], note[2], note[3], note[4], note[5], note[6], note[7], note[8], note[9])
 
     def loadGroups(self):
@@ -257,15 +246,12 @@ class DatabaseManager(object):
         for group in load:
             if type(group[0]) is not int:
                 group[0] = int(group[0])
-            else:
-                if type(group[1]) is not str:
-                    group[1] = str(group[1])
-                else:
-                    if type(group[2]) is not str:
-                        group[2] = str(group[2])
-                    else:
-                        if type(group[3]) is not int:
-                            group[3] = int(group[3])
+            if type(group[1]) is not str:
+                group[1] = str(group[1])
+            if type(group[2]) is not str:
+                group[2] = str(group[2])
+            if type(group[3]) is not int:
+                group[3] = int(group[3])
             self.groupManager.addGroup(group[0], group[1], group[2], group[3])
     
     def saveDatabase(self):
@@ -631,7 +617,7 @@ class Note(DataObjects):
 
 
 class User(DataObjects):
-    def __init__(self, _id, _username, _password):
+    def __init__(self, _id: int, _username: str, _password: str):
         """Groups and notes are filled in separately by userManager when appropriate"""
         super().__init__(_id)
         self.username = _username
@@ -692,13 +678,13 @@ class User(DataObjects):
 
 
 class Group(DataObjects):
-    def __init__(self, ident, groupname, desc, own):
-        super().__init__(ident)
-        self.name = groupname
-        self.description = desc
-        self.owner = own
+    def __init__(self, _id, _groupname, _desc, _own):
+        super().__init__(_id)
+        self.name = _groupname
+        self.description = _desc
+        self.owner = _own
         self.isPrivate = True
-        self.members = [own]
+        self.members = [_own]
         self.new = False
         
     def addUser(self, newuser):
