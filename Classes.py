@@ -459,8 +459,7 @@ class GUIManager(object):
         else:
             #This shouldn't ever print in production but if it does it should be helpful.
             print("Incorrect keyword sent to guiManager.openWindow(keyword) . Incorrect keyword: \"" + keyword + "\" not found in guiDict")
-
-        
+ 
     def end(self):
         """Ends the tkinter program. Is called when x on any window is pressed"""
         self.root.destroy()
