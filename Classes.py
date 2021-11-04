@@ -52,7 +52,12 @@ class DatabaseManager(object):
         add_newuser=("INSERT INTO users"
                      "(user_id, password, username)"
                      "VALUES (%s, %s, %s)")
-        self.cursor.execute(add_newuser, (1, "Alex", "x1pho3nc0rp"))
+        modify_user = ("UPDATE users"
+                       "SET username = %s"
+                       "WHERE user_id = %s")
+        ident = ("Damon", 1)
+        self.cursor.execute(add_newuser, (1, "x1pho3nc0rp", "Alex"))
+        self.cursor.execute(modify_user, ident)
         self.startup()
         print(self.userManager.userList[0].username)
         print(self.userManager.userList[0].password)
@@ -276,7 +281,11 @@ class DatabaseManager(object):
         delete_usergrouping=("DELETE FROM usergroups WHERE user_id = %s")
         delete_usernotes=("DELETE FROM notes WHERE user_id = %s")
         add_newuser=("INSERT INTO users"
+<<<<<<< Updated upstream
                      "(user_id, password, username)"
+=======
+                     "(user_id, username, password)"
+>>>>>>> Stashed changes
                      "VALUES (%s, %s, %s)")
         if user.update == True:
             self.cursor.execute(modify_pass, user.password, user.id)
@@ -323,12 +332,15 @@ class DatabaseManager(object):
             #self.cursor.execute(update_notedata, note.text, note.id) More work needed
             self.cursor.execute(update_notedate, note.lmod, note.id)
             #self.cursor.execute(add_note, note.id, self.id, date, date, entry, "", 5, "", "", False) More work needed
-            #self.cursor.execute(add_usercon, self.id, noteid) More work needed
+            #self.cursor.execute(add_usercon, self.id, note.id) More work needed
         elif note.mark == True:
             self.cursor.execute(delete_note, note.id)
             self.cursor.execute(delete_notegroup, note.id)
             self.cursor.execute(delete_noteuser, note.id)
             self.cursor.execute(delete_notetag, note.id)
+        elif note.new == True:
+            #self.cursor.execute(add_note, note.id, user.id, date, date, entry, "", 5, "", "", False) More word needed
+            pass
         
     def saveGroups(self, group):
         #Not fully implemented yet
@@ -384,7 +396,7 @@ class UserManager(object):
     def login(self, username, password):
         """Searches for user with username and checks validity of password. Returns True if success and False if any type of failure (username not found / password invalid)"""
         pass
-    def addUser(self, userId, username, password):
+    def addUser(self, userId, password, username):
         newUser = User(userId, username, password)
         self.userList.append(newUser)
     def userJoinGroup(self, user, group):
@@ -578,6 +590,7 @@ class DataObjects(object):
         self.id = _id
         self.update = False
         self.mark = False
+        self.new = False
 
 
 class Note(DataObjects):
@@ -596,8 +609,6 @@ class Note(DataObjects):
         self.repeating = _repeating
         self.tags = []
         self.visibleBy = []
-        self.new = False
-
 
     def edit(self, entertext):
         """Currently only allows adding to text, will eventually allow for full editing of text"""
@@ -623,7 +634,6 @@ class User(DataObjects):
         self.password = _password
         self.groups = []
         self.notes = []
-        self.new = False
 
     def getId(self) -> int:
         """Returns self.id, an Integer representing a unique UserID"""
@@ -673,7 +683,9 @@ class User(DataObjects):
         """removes note from note list"""
         self.notes.remove(note)
         
-
+    def toggleNewUser(self):
+        "Changes new from false to True"
+        self.new = True
 
 
 class Group(DataObjects):
@@ -683,8 +695,12 @@ class Group(DataObjects):
         self.description = _desc
         self.owner = _own
         self.isPrivate = True
+<<<<<<< Updated upstream
         self.members = [_own]
         self.new = False
+=======
+        self.members = [own]
+>>>>>>> Stashed changes
         
     def addUser(self, newuser):
         self.members.append(newuser)
@@ -704,6 +720,10 @@ class Group(DataObjects):
             self.isPrivate == False
         else:
             self.isPrivate == True
+            
+    def toggleNewUser(self):
+        "Changes new from false to True"
+        self.new = True
 
 def main():
     dbManager = DatabaseManager()
