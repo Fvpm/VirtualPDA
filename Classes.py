@@ -281,11 +281,7 @@ class DatabaseManager(object):
         delete_usergrouping=("DELETE FROM usergroups WHERE user_id = %s")
         delete_usernotes=("DELETE FROM notes WHERE user_id = %s")
         add_newuser=("INSERT INTO users"
-<<<<<<< Updated upstream
                      "(user_id, password, username)"
-=======
-                     "(user_id, username, password)"
->>>>>>> Stashed changes
                      "VALUES (%s, %s, %s)")
         if user.update == True:
             self.cursor.execute(modify_pass, user.password, user.id)
@@ -695,12 +691,7 @@ class Group(DataObjects):
         self.description = _desc
         self.owner = _own
         self.isPrivate = True
-<<<<<<< Updated upstream
         self.members = [_own]
-        self.new = False
-=======
-        self.members = [own]
->>>>>>> Stashed changes
         
     def addUser(self, newuser):
         self.members.append(newuser)
