@@ -55,9 +55,13 @@ class DatabaseManager(object):
         modify_user = ("UPDATE users"
                        "SET username = %s"
                        "WHERE user_id = %s")
+        delete_user = ("DELETE FROM users WHERE user_id = %s")
         ident = ("Damon", 1)
+        ident2 = (1, )
         self.cursor.execute(add_newuser, (1, "x1pho3nc0rp", "Alex"))
-        self.cursor.execute(modify_user, ident)
+        #Comment out line underneath after testing delete. Error should occur when userlist[0].username is called, this means it is working
+        #self.cursor.execute(delete_user, ident2)
+        #self.cursor.execute(modify_user, ident) Needs more work
         self.startup()
         print(self.userManager.userList[0].username)
         print(self.userManager.userList[0].password)
@@ -623,6 +627,10 @@ class Note(DataObjects):
     def toggleNewNote(self):
         "Changes new from false to True"
         self.new = True
+        
+    def deleteNote(self):
+        "Marks the note for deletion"
+        self.mark = True
 
 
 class User(DataObjects):
@@ -685,6 +693,10 @@ class User(DataObjects):
     def toggleNewUser(self):
         "Changes new from false to True"
         self.new = True
+        
+    def deleteUser(self):
+        "Marks the user for deletion"
+        self.mark = True
 
 
 class Group(DataObjects):
@@ -718,6 +730,10 @@ class Group(DataObjects):
     def toggleNewUser(self):
         "Changes new from false to True"
         self.new = True
+        
+    def deleteGroup(self):
+        "Marks the group for deletion"
+        self.mark = True
 
 def main():
     dbManager = DatabaseManager()
