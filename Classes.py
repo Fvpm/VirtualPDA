@@ -287,11 +287,12 @@ class DatabaseManager(object):
             self.cursor.execute(modify_pass, user.password, user.id)
             self.cursor.execute(modify_user, user.username, user.id)
         elif user.mark == True:
-            self.cursor.execute(delete_user, user.id)
-            self.cursor.execute(delete_usergroup, user.id)
-            self.cursor.execute(delete_usernote, user.id)
-            self.cursor.execute(delete_usergrouping, user.id)
-            self.cursor.execute(delete_usernotes, user.id)
+            ident = (user.id, )
+            self.cursor.execute(delete_user, ident)
+            self.cursor.execute(delete_usergroup, ident)
+            self.cursor.execute(delete_usernote, ident)
+            self.cursor.execute(delete_usergrouping, ident)
+            self.cursor.execute(delete_usernotes, ident)
         elif user.new == True:
             self.cursor.execute(add_newuser, user.id, user.username, user.password)
         
@@ -330,10 +331,11 @@ class DatabaseManager(object):
             #self.cursor.execute(add_note, note.id, self.id, date, date, entry, "", 5, "", "", False) More work needed
             #self.cursor.execute(add_usercon, self.id, note.id) More work needed
         elif note.mark == True:
-            self.cursor.execute(delete_note, note.id)
-            self.cursor.execute(delete_notegroup, note.id)
-            self.cursor.execute(delete_noteuser, note.id)
-            self.cursor.execute(delete_notetag, note.id)
+            ident = (note.id, )
+            self.cursor.execute(delete_note, ident)
+            self.cursor.execute(delete_notegroup, ident)
+            self.cursor.execute(delete_noteuser, ident)
+            self.cursor.execute(delete_notetag, ident)
         elif note.new == True:
             #self.cursor.execute(add_note, note.id, user.id, date, date, entry, "", 5, "", "", False) More word needed
             pass
@@ -376,6 +378,7 @@ class DatabaseManager(object):
             self.cursor.execute(delete_groupmem, group.id)
             self.cursor.execute(delete_groupnote, group.id)
         elif group.new == True:
+            ident = (group.id, )
             #self.cursor.execute(new_group, group.id, group.name, group.desc, self.id, True) More work needed
             pass
 
