@@ -52,7 +52,16 @@ class DatabaseManager(object):
         add_newuser=("INSERT INTO users"
                      "(user_id, password, username)"
                      "VALUES (%s, %s, %s)")
-        self.cursor.execute(add_newuser, (1, "Alex", "x1pho3nc0rp"))
+        modify_user = ("UPDATE users"
+                       "SET username = %s"
+                       "WHERE user_id = %s")
+        delete_user = ("DELETE FROM users WHERE user_id = %s")
+        ident = ("Damon", 1)
+        ident2 = (1, )
+        self.cursor.execute(add_newuser, (1, "x1pho3nc0rp", "Alex"))
+        #Comment out line underneath after testing delete. Error should occur when userlist[0].username is called, this means it is working
+        #self.cursor.execute(delete_user, ident2)
+        #self.cursor.execute(modify_user, ident) Needs more work
         self.startup()
         print(self.userManager.userList[0].username)
         print(self.userManager.userList[0].password)
@@ -276,17 +285,18 @@ class DatabaseManager(object):
         delete_usergrouping=("DELETE FROM usergroups WHERE user_id = %s")
         delete_usernotes=("DELETE FROM notes WHERE user_id = %s")
         add_newuser=("INSERT INTO users"
-                     "(user_id, username, password)"
-                     "VALUES (%(user_id)s, %(username)s, %(password)s)")
+                     "(user_id, password, username)"
+                     "VALUES (%s, %s, %s)")
         if user.update == True:
             self.cursor.execute(modify_pass, user.password, user.id)
             self.cursor.execute(modify_user, user.username, user.id)
         elif user.mark == True:
-            self.cursor.execute(delete_user, user.id)
-            self.cursor.execute(delete_usergroup, user.id)
-            self.cursor.execute(delete_usernote, user.id)
-            self.cursor.execute(delete_usergrouping, user.id)
-            self.cursor.execute(delete_usernotes, user.id)
+            ident = (user.id, )
+            self.cursor.execute(delete_user, ident)
+            self.cursor.execute(delete_usergroup, ident)
+            self.cursor.execute(delete_usernote, ident)
+            self.cursor.execute(delete_usergrouping, ident)
+            self.cursor.execute(delete_usernotes, ident)
         elif user.new == True:
             self.cursor.execute(add_newuser, user.id, user.username, user.password)
         
@@ -294,7 +304,7 @@ class DatabaseManager(object):
         #Not fully implemented yet
         add_usercon = ("INSERT INTO usercon"
                         "(user_id, note_id)"
-                        "VALUES (%(user_id)s, %(note_id)s)")
+                        "VALUES (%s, %s)")
         delete_note = ("DELETE FROM notes WHERE note_id = %s")
         delete_notegroup=("DELETE FROM groupcon WHERE note_id = %s")
         delete_noteuser=("DELETE FROM usercon WHERE note_id = %s")
@@ -302,7 +312,7 @@ class DatabaseManager(object):
         remove_tag = ("DELETE FROM tags WHERE tag_id = %s AND note_id = %s")
         add_tag = ("INSERT INTO tags"
                    "(tag_id, tag_text, note_id)"
-                   "VALUES (%(tag_id)s, %(tag_text)s, %(note_id)s)")
+                   "VALUES (%s, %s, %s)")
         update_notedata = ("UPDATE notes"
                         "SET notedata = %s"
                         "WHERE note_id = %s")
@@ -311,10 +321,10 @@ class DatabaseManager(object):
                         "WHERE note_id = %s")
         add_note = ("INSERT INTO notes"
                         "(note_id, user_id, date_made, lastmod, notedata, date, import, title, color, repeating)"
-                        "VALUES (%(note_id)s, %(user_id)s, %(date_made)s, %(lastmod)s, %(notedata)s, %(date)s, %(import)s, %(title)s, %(color)s, %(repeating)s)")
+                        "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)")
         add_usercon = ("INSERT INTO usercon"
                         "(user_id, note_id)"
-                        "VALUES (%(user_id)s, %(note_id)s)")
+                        "VALUES (%s, %s)")
         if note.update == True:
             #self.cursor.execute(add_usercon, shareuser, note.id) More work needed
             #self.cursor.execute(remove_tag, oldtag[0], note.id) Conditions needed
@@ -323,24 +333,28 @@ class DatabaseManager(object):
             #self.cursor.execute(update_notedata, note.text, note.id) More work needed
             self.cursor.execute(update_notedate, note.lmod, note.id)
             #self.cursor.execute(add_note, note.id, self.id, date, date, entry, "", 5, "", "", False) More work needed
-            #self.cursor.execute(add_usercon, self.id, noteid) More work needed
+            #self.cursor.execute(add_usercon, self.id, note.id) More work needed
         elif note.mark == True:
-            self.cursor.execute(delete_note, note.id)
-            self.cursor.execute(delete_notegroup, note.id)
-            self.cursor.execute(delete_noteuser, note.id)
-            self.cursor.execute(delete_notetag, note.id)
+            ident = (note.id, )
+            self.cursor.execute(delete_note, ident)
+            self.cursor.execute(delete_notegroup, ident)
+            self.cursor.execute(delete_noteuser, ident)
+            self.cursor.execute(delete_notetag, ident)
+        elif note.new == True:
+            #self.cursor.execute(add_note, note.id, user.id, date, date, entry, "", 5, "", "", False) More word needed
+            pass
         
     def saveGroups(self, group):
         #Not fully implemented yet
         new_group = ("INSERT INTO usergroups"
                      "(group_id, name, description, user_id, privacy)"
-                     "VALUES (%(group_id)s, %(name)s, %(description)s, %(user_id)s, %(privacy)s)")
+                     "VALUES (%s, %s, %s, %s, %s)")
         add_groupmem = ("INSERT INTO groupmem"
                         "(group_id, user_id)"
-                        "VALUES (%(group_id)s, %(user_id)s)")
+                        "VALUES (%s, %s)")
         add_groupcon = ("INSERT INTO groupcon"
                         "(group_id, note_id)"
-                        "VALUES (%(group_id)s, %(note_id)s)")
+                        "VALUES (%s, %s)")
         delete_group = ("DELETE FROM usergroups WHERE group_id = %s")
         delete_groupmem=("DELETE FROM groupmem WHERE group_id = %s")
         delete_groupnote=("DELETE FROM groupcon WHERE group_id = %s")
@@ -368,6 +382,7 @@ class DatabaseManager(object):
             self.cursor.execute(delete_groupmem, group.id)
             self.cursor.execute(delete_groupnote, group.id)
         elif group.new == True:
+            ident = (group.id, )
             #self.cursor.execute(new_group, group.id, group.name, group.desc, self.id, True) More work needed
             pass
 
@@ -384,7 +399,7 @@ class UserManager(object):
     def login(self, username, password):
         """Searches for user with username and checks validity of password. Returns True if success and False if any type of failure (username not found / password invalid)"""
         pass
-    def addUser(self, userId, username, password):
+    def addUser(self, userId, password, username):
         newUser = User(userId, username, password)
         self.userList.append(newUser)
     def userJoinGroup(self, user, group):
@@ -459,8 +474,7 @@ class GUIManager(object):
         else:
             #This shouldn't ever print in production but if it does it should be helpful.
             print("Incorrect keyword sent to guiManager.openWindow(keyword) . Incorrect keyword: \"" + keyword + "\" not found in guiDict")
-
-        
+ 
     def end(self):
         """Ends the tkinter program. Is called when x on any window is pressed"""
         self.root.destroy()
@@ -579,6 +593,7 @@ class DataObjects(object):
         self.id = _id
         self.update = False
         self.mark = False
+        self.new = False
 
 
 class Note(DataObjects):
@@ -597,8 +612,6 @@ class Note(DataObjects):
         self.repeating = _repeating
         self.tags = []
         self.visibleBy = []
-        self.new = False
-
 
     def edit(self, entertext):
         """Currently only allows adding to text, will eventually allow for full editing of text"""
@@ -614,17 +627,20 @@ class Note(DataObjects):
     def toggleNewNote(self):
         "Changes new from false to True"
         self.new = True
+        
+    def deleteNote(self):
+        "Marks the note for deletion"
+        self.mark = True
 
 
 class User(DataObjects):
-    def __init__(self, _id, _username, _password):
+    def __init__(self, _id: int, _username: str, _password: str):
         """Groups and notes are filled in separately by userManager when appropriate"""
         super().__init__(_id)
         self.username = _username
         self.password = _password
         self.groups = []
         self.notes = []
-        self.new = False
 
     def getId(self) -> int:
         """Returns self.id, an Integer representing a unique UserID"""
@@ -674,18 +690,23 @@ class User(DataObjects):
         """removes note from note list"""
         self.notes.remove(note)
         
-
+    def toggleNewUser(self):
+        "Changes new from false to True"
+        self.new = True
+        
+    def deleteUser(self):
+        "Marks the user for deletion"
+        self.mark = True
 
 
 class Group(DataObjects):
-    def __init__(self, ident, groupname, desc, own):
-        super().__init__(ident)
-        self.name = groupname
-        self.description = desc
-        self.owner = own
+    def __init__(self, _id, _groupname, _desc, _own):
+        super().__init__(_id)
+        self.name = _groupname
+        self.description = _desc
+        self.owner = _own
         self.isPrivate = True
-        self.members = [own]
-        self.new = False
+        self.members = [_own]
         
     def addUser(self, newuser):
         self.members.append(newuser)
@@ -705,6 +726,14 @@ class Group(DataObjects):
             self.isPrivate == False
         else:
             self.isPrivate == True
+            
+    def toggleNewUser(self):
+        "Changes new from false to True"
+        self.new = True
+        
+    def deleteGroup(self):
+        "Marks the group for deletion"
+        self.mark = True
 
 def main():
     dbManager = DatabaseManager()
