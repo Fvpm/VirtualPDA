@@ -52,8 +52,8 @@ class DatabaseManager(object):
         add_newuser=("INSERT INTO users"
                      "(user_id, password, username)"
                      "VALUES (%s, %s, %s)")
-        modify_user = ("UPDATE users"
-                       "SET username = %s"
+        modify_user = ("UPDATE users "
+                       "SET username = %s "
                        "WHERE user_id = %s")
         delete_user = ("DELETE FROM users WHERE user_id = %s")
         ident = ("Damon", 1)
@@ -61,10 +61,8 @@ class DatabaseManager(object):
         self.cursor.execute(add_newuser, (1, "x1pho3nc0rp", "Alex"))
         #Comment out line underneath after testing delete. Error should occur when userlist[0].username is called, this means it is working
         #self.cursor.execute(delete_user, ident2)
-        #self.cursor.execute(modify_user, ident) #Needs more work
-        self.cursor.execute("UPDATE users "
-                       "SET username = %s "
-                       "WHERE user_id = %s", ident)
+        #self.cursor.execute(modify_user, ident)
+        
         self.startup()
         print(self.userManager.userList[0].username)
         print(self.userManager.userList[0].password)
@@ -213,6 +211,7 @@ class DatabaseManager(object):
         loadusers = ("SELECT * FROM users")
         self.cursor.execute(loadusers)
         load = self.cursor.fetchall()
+        print(load)
         for user in load:
             if type(user[0]) is not int:
                 user[0] = int(user[0])
@@ -274,13 +273,14 @@ class DatabaseManager(object):
             self.saveNotes(Note)
         for Group in self.groupManager.groupList:
             self.saveGroups(Group)
+        self.database.commit()
         
     def saveUsers(self, user):
-        modify_pass = ("UPDATE users"
-                       "SET password = %s"
+        modify_pass = ("UPDATE users "
+                       "SET password = %s "
                        "WHERE user_id = %s")
-        modify_user = ("UPDATE users"
-                       "SET username = %s"
+        modify_user = ("UPDATE users "
+                       "SET username = %s "
                        "WHERE user_id = %s")
         delete_user = ("DELETE FROM users WHERE user_id = %s")
         delete_usergroup=("DELETE FROM groupmem WHERE user_id = %s")
@@ -316,11 +316,11 @@ class DatabaseManager(object):
         add_tag = ("INSERT INTO tags"
                    "(tag_id, tag_text, note_id)"
                    "VALUES (%s, %s, %s)")
-        update_notedata = ("UPDATE notes"
-                        "SET notedata = %s"
+        update_notedata = ("UPDATE notes "
+                        "SET notedata = %s "
                         "WHERE note_id = %s")
-        update_notedate = ("UPDATE notes"
-                        "SET lastmod = %s"
+        update_notedate = ("UPDATE notes "
+                        "SET lastmod = %s "
                         "WHERE note_id = %s")
         add_note = ("INSERT INTO notes"
                         "(note_id, user_id, date_made, lastmod, notedata, date, import, title, color, repeating)"
@@ -361,15 +361,15 @@ class DatabaseManager(object):
         delete_group = ("DELETE FROM usergroups WHERE group_id = %s")
         delete_groupmem=("DELETE FROM groupmem WHERE group_id = %s")
         delete_groupnote=("DELETE FROM groupcon WHERE group_id = %s")
-        modify_privacy = ("UPDATE usergroups"
-                       "SET privacy = %s"
+        modify_privacy = ("UPDATE usergroups "
+                       "SET privacy = %s "
                        "WHERE group_id = %s")
-        modify_name = ("UPDATE usergroups"
-                       "SET name = %s"
+        modify_name = ("UPDATE usergroups "
+                       "SET name = %s "
                        "WHERE group_id = %s")
         remove_user=("DELETE FROM groupmem WHERE user_id = %s")
-        modify_desc = ("UPDATE usergroups"
-                       "SET description = %s"
+        modify_desc = ("UPDATE usergroups "
+                       "SET description = %s "
                        "WHERE group_id = %s")
         remove_self=("DELETE FROM groupmem WHERE user_id = %s")
         if group.update == True:
