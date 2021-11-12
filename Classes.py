@@ -84,8 +84,8 @@ class DatabaseManager(object):
 
         #load data from database
         self.loadUsers()
-        #self.loadNotes()
-        #self.loadGroups()
+        self.loadNotes()
+        self.loadGroups()
         return [self.userManager, self.noteManager, self.groupManager, self.guiManager]
 
     def verifyDatabase(self, serviceId):
