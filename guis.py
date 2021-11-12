@@ -24,6 +24,7 @@ class GUIManager(object):
 
         self.root.mainloop()
 
+
     def openWindow(self, keyword):
         """Switches windows by hiding the current one and showing the requested"""
         if(self.currentWindow != None):
@@ -59,6 +60,10 @@ class AbstractGUI(object):
         self.window.withdraw()
         self.window.protocol("WM_DELETE_WINDOW",self.onClose)
 
+    def close(self):
+        self.window.destroy()
+        self.window.update()
+
     def show(self):
         """Makes window re-appear if invisible. Does nothing if visible"""
         self.window.deiconify()
@@ -69,7 +74,7 @@ class AbstractGUI(object):
 
     def onClose(self):
         """Closing any window using the system's red X will close the program. This is a helper function for the event handler set up in __init__ in order to do so."""
-        self.guiManager.end()
+        #self.guiManager.end()
 
 
 class LoginGUI(AbstractGUI):
@@ -164,25 +169,27 @@ class HomeGUI(AbstractGUI):
         self.emptyMenubar = Menu(self.window)
 
         userMenu = Menu(self.menubar, tearoff=0)
-        userMenu.add_command(label="Logout", command=self.backToLogin)
-        userMenu.add_command(label="Change Password", command = self.openPasswordChangeWindow)
-        userMenu.add_command(label="Groups",command = self.openGroupsWindow)
+        userMenu.add_command(label="Logout", command=None)
+        userMenu.add_command(label="Change Password", command = None)
+        userMenu.add_command(label="Groups",command = None)
         self.menubar.add_cascade(label="User", menu=userMenu)
 
         memoMenu = Menu(self.menubar, tearoff=0)
-        memoMenu.add_command(label="New", command=self.createNewFile)
-        memoMenu.add_command(label="Search", command=self.openSearchWindow)
-        memoMenu.add_command(label="Delete", command=self.deleteCurrentFile)
-        memoMenu.add_command(label="Share", command=self.openShareWindow)
+        memoMenu.add_command(label="New", command=None)
+        memoMenu.add_command(label="Search", command=None)
+        memoMenu.add_command(label="Delete", command=None)
+        memoMenu.add_command(label="Share", command=None)
         self.menubar.add_cascade(label="Memo", menu=memoMenu)
+
+        self.window.config(menu=self.menubar)
 
     def show(self):
         super().show()
-        self.window.config(menu=self.menubar)
+        #self.window.config(menu=self.menubar)
 
     def hide(self):
         super().hide()
-        self.window.config(menu=self.emptyMenubar)
+        #self.window.config(menu=self.emptyMenubar)
 
     def openShareWindow(self):
         pass
