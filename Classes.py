@@ -84,8 +84,8 @@ class DatabaseManager(object):
 
         #load data from database
         self.loadUsers()
-        self.loadNotes()
-        self.loadGroups()
+        #self.loadNotes()
+        #self.loadGroups()
         return [self.userManager, self.noteManager, self.groupManager, self.guiManager]
 
     def verifyDatabase(self, serviceId):
@@ -269,10 +269,16 @@ class DatabaseManager(object):
         """Saves and updates the database"""
         for User in self.userManager.userList:
             self.saveUsers(User)
+            User.setNew(False)
+            User.setUpdate(False)
         for Note in self.noteManager.noteList:
             self.saveNotes(Note)
+            Note.setNew(False)
+            Note.setUpdate(False)
         for Group in self.groupManager.groupList:
             self.saveGroups(Group)
+            Group.setNew(False)
+            Group.setUpdate(False)
         self.database.commit()
         
     def saveUsers(self, user):
@@ -290,9 +296,8 @@ class DatabaseManager(object):
         add_newuser=("INSERT INTO users"
                      "(user_id, password, username)"
                      "VALUES (%s, %s, %s)")
-        if user.getUpdate() == True:
-            self.cursor.execute(modify_pass, user.password, user.id)
-            self.cursor.execute(modify_user, user.username, user.id)
+        if user.getNew() == True:
+            self.cursor.execute(add_newuser, user.id, user.username, user.password)
         elif user.getMark() == True:
             ident = (user.id, )
             self.cursor.execute(delete_user, ident)
@@ -300,8 +305,9 @@ class DatabaseManager(object):
             self.cursor.execute(delete_usernote, ident)
             self.cursor.execute(delete_usergrouping, ident)
             self.cursor.execute(delete_usernotes, ident)
-        elif user.getNew() == True:
-            self.cursor.execute(add_newuser, user.id, user.username, user.password)
+        elif user.getUpdate() == True:
+            self.cursor.execute(modify_pass, user.password, user.id)
+            self.cursor.execute(modify_user, user.username, user.id)
         
     def saveNotes(self, note):
         #Not fully implemented yet
@@ -328,24 +334,22 @@ class DatabaseManager(object):
         add_usercon = ("INSERT INTO usercon"
                         "(user_id, note_id)"
                         "VALUES (%s, %s)")
-        if note.getUpdate() == True:
-            #self.cursor.execute(add_usercon, shareuser, note.id) More work needed
-            #self.cursor.execute(remove_tag, oldtag[0], note.id) Conditions needed
-            #for tag in note.tags: Come back later
-             #   self.cursor.execute(add_tag, newtag, tag, note.id)
-            #self.cursor.execute(update_notedata, note.text, note.id) More work needed
-            self.cursor.execute(update_notedate, note.lmod, note.id)
-            #self.cursor.execute(add_note, note.id, self.id, date, date, entry, "", 5, "", "", False) More work needed
-            #self.cursor.execute(add_usercon, self.id, note.id) More work needed
+        if note.getNew() == True:
+            self.cursor.execute(add_note, note.id, note.owner, note.dateMade, note.lastModified, note.text, note.eventDate, note.importance, note.title, note.color, note.repeating)
+            self.cursor.execute(add_usercon, note.id, note.owner)
         elif note.getMark() == True:
             ident = (note.id, )
             self.cursor.execute(delete_note, ident)
             self.cursor.execute(delete_notegroup, ident)
             self.cursor.execute(delete_noteuser, ident)
             self.cursor.execute(delete_notetag, ident)
-        elif note.getNew() == True:
-            #self.cursor.execute(add_note, note.id, user.id, date, date, entry, "", 5, "", "", False) More word needed
-            pass
+        elif note.getUpdate() == True:
+            #self.cursor.execute(add_usercon, shareuser, note.id) More work needed
+            #self.cursor.execute(remove_tag, oldtag[0], note.id) Conditions needed
+            #for tag in note.tags: Come back later
+             #   self.cursor.execute(add_tag, newtag, tag, note.id)
+            self.cursor.execute(update_notedata, note.text, note.id)
+            self.cursor.execute(update_notedate, note.lastModified, note.id)
         
     def saveGroups(self, group):
         #Not fully implemented yet
@@ -371,23 +375,22 @@ class DatabaseManager(object):
         modify_desc = ("UPDATE usergroups "
                        "SET description = %s "
                        "WHERE group_id = %s")
-        remove_self=("DELETE FROM groupmem WHERE user_id = %s")
-        if group.getUpdate() == True:
-            #self.cursor.execute(add_groupmem, group.id, self.id) More work needed
-            #self.cursor.execute(add_groupcon, groupid, noteid) More work needed
-            #self.cursor.execute(remove_self, self.id) More work needed
+        if group.getNew() == True:
+            self.cursor.execute(new_group, group.id, group.name, group.description, group.owner, group.isPrivate)
+            for member in group.members:
+                self.cursor.execute(add_groupmem, group.id, member)
+        elif group.getMark() == True:
+            ident = (group.id, )
+            self.cursor.execute(delete_group, ident)
+            self.cursor.execute(delete_groupmem, ident)
+            self.cursor.execute(delete_groupnote, ident)
+        elif group.getUpdate() == True:
+            #self.cursor.execute(add_groupmem, group.id, self.id)
+            #self.cursor.execute(add_groupcon, groupid, noteid)
             self.cursor.execute(modify_desc, group.desc, group.id)
-            #self.cursor.execute(remove_user, memind) More work needed
+            #self.cursor.execute(remove_user, memind)
             self.cursor.execute(modify_name, group.name, group.id)
             self.cursor.execute(modify_privacy, group.isPrivate, group.id)
-        elif group.getMark() == True:
-            self.cursor.execute(delete_group, group.id)
-            self.cursor.execute(delete_groupmem, group.id)
-            self.cursor.execute(delete_groupnote, group.id)
-        elif group.getNew() == True:
-            ident = (group.id, )
-            #self.cursor.execute(new_group, group.id, group.name, group.desc, self.id, True) More work needed
-            pass
 
 class UserManager(object):
     def __init__(self):
