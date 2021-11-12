@@ -290,17 +290,17 @@ class DatabaseManager(object):
         add_newuser=("INSERT INTO users"
                      "(user_id, password, username)"
                      "VALUES (%s, %s, %s)")
-        if user.update == True:
+        if user.getUpdate() == True:
             self.cursor.execute(modify_pass, user.password, user.id)
             self.cursor.execute(modify_user, user.username, user.id)
-        elif user.mark == True:
+        elif user.getMark() == True:
             ident = (user.id, )
             self.cursor.execute(delete_user, ident)
             self.cursor.execute(delete_usergroup, ident)
             self.cursor.execute(delete_usernote, ident)
             self.cursor.execute(delete_usergrouping, ident)
             self.cursor.execute(delete_usernotes, ident)
-        elif user.new == True:
+        elif user.getNew() == True:
             self.cursor.execute(add_newuser, user.id, user.username, user.password)
         
     def saveNotes(self, note):
@@ -328,7 +328,7 @@ class DatabaseManager(object):
         add_usercon = ("INSERT INTO usercon"
                         "(user_id, note_id)"
                         "VALUES (%s, %s)")
-        if note.update == True:
+        if note.getUpdate() == True:
             #self.cursor.execute(add_usercon, shareuser, note.id) More work needed
             #self.cursor.execute(remove_tag, oldtag[0], note.id) Conditions needed
             #for tag in note.tags: Come back later
@@ -337,13 +337,13 @@ class DatabaseManager(object):
             self.cursor.execute(update_notedate, note.lmod, note.id)
             #self.cursor.execute(add_note, note.id, self.id, date, date, entry, "", 5, "", "", False) More work needed
             #self.cursor.execute(add_usercon, self.id, note.id) More work needed
-        elif note.mark == True:
+        elif note.getMark() == True:
             ident = (note.id, )
             self.cursor.execute(delete_note, ident)
             self.cursor.execute(delete_notegroup, ident)
             self.cursor.execute(delete_noteuser, ident)
             self.cursor.execute(delete_notetag, ident)
-        elif note.new == True:
+        elif note.getNew() == True:
             #self.cursor.execute(add_note, note.id, user.id, date, date, entry, "", 5, "", "", False) More word needed
             pass
         
@@ -372,7 +372,7 @@ class DatabaseManager(object):
                        "SET description = %s "
                        "WHERE group_id = %s")
         remove_self=("DELETE FROM groupmem WHERE user_id = %s")
-        if group.update == True:
+        if group.getUpdate() == True:
             #self.cursor.execute(add_groupmem, group.id, self.id) More work needed
             #self.cursor.execute(add_groupcon, groupid, noteid) More work needed
             #self.cursor.execute(remove_self, self.id) More work needed
@@ -380,11 +380,11 @@ class DatabaseManager(object):
             #self.cursor.execute(remove_user, memind) More work needed
             self.cursor.execute(modify_name, group.name, group.id)
             self.cursor.execute(modify_privacy, group.isPrivate, group.id)
-        elif group.mark == True:
+        elif group.getMark() == True:
             self.cursor.execute(delete_group, group.id)
             self.cursor.execute(delete_groupmem, group.id)
             self.cursor.execute(delete_groupnote, group.id)
-        elif group.new == True:
+        elif group.getNew() == True:
             ident = (group.id, )
             #self.cursor.execute(new_group, group.id, group.name, group.desc, self.id, True) More work needed
             pass
@@ -597,6 +597,24 @@ class DataObjects(object):
         self.update = False
         self.mark = False
         self.new = False
+        
+    def getUpdate():
+        return self.update
+        
+    def getMark():
+        return self.mark
+        
+    def getNew():
+        return self.new
+    
+    def setUpdate(change: bool):
+        self.update = change
+        
+    def setMark():
+        self.update = True
+        
+    def setNew(change: bool):
+        self.new = change
 
 
 class Note(DataObjects):
