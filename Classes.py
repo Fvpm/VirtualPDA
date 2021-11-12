@@ -45,8 +45,8 @@ class DatabaseManager(object):
         
         self.cursor = self.database.cursor(buffered=True)
         
-        #self.cursor.execute("DROP DATABASE {}".format(serviceId))
-        #self.createDatabase(serviceId)
+        self.cursor.execute("DROP DATABASE {}".format(serviceId))
+        self.createDatabase(serviceId)
         self.verifyDatabase(serviceId)
         #Code placed here for testing purposes
         add_newuser=("INSERT INTO users"
@@ -55,13 +55,9 @@ class DatabaseManager(object):
         modify_user = ("UPDATE users "
                        "SET username = %s "
                        "WHERE user_id = %s")
-        delete_user = ("DELETE FROM users WHERE user_id = %s")
         ident = ("Damon", 1)
-        ident2 = (1, )
         self.cursor.execute(add_newuser, (1, "x1pho3nc0rp", "Alex"))
-        #Comment out line underneath after testing delete. Error should occur when userlist[0].username is called, this means it is working
-        #self.cursor.execute(delete_user, ident2)
-        #self.cursor.execute(modify_user, ident)
+        self.cursor.execute(modify_user, ident)
         
         self.startup()
         print(self.userManager.userList[0].username)
@@ -189,10 +185,10 @@ class DatabaseManager(object):
         TABLES['tags'] = (
             "CREATE TABLE `tags` ("
             " `tag_id` int(12) NOT NULL AUTO_INCREMENT,"
+            " `note_id` int(12) NOT NULL,"
             " `tag_text` varchar(16),"
-            " `note_id` int(12),"
-            " PRIMARY KEY(`tag_id`),"
-            " FOREIGN KEY(`note_id`) REFERENCES `notes` (`note_id`)"
+            " FOREIGN KEY(`note_id`) REFERENCES `notes` (`note_id`),"
+            " PRIMARY KEY(`tag_id`, `note_id`)"
             ") ENGINE=InnoDB")
         self.cursor.execute("CREATE DATABASE {} DEFAULT CHARACTER SET 'utf8'".format(serviceId))
         self.cursor.execute("USE {}".format(serviceId))
@@ -346,7 +342,7 @@ class DatabaseManager(object):
         elif note.getUpdate() == True:
             #self.cursor.execute(add_usercon, shareuser, note.id) More work needed
             #self.cursor.execute(remove_tag, oldtag[0], note.id) Conditions needed
-            #for tag in note.tags: Come back later
+            #for tag in note.tags:
              #   self.cursor.execute(add_tag, newtag, tag, note.id)
             self.cursor.execute(update_notedata, note.text, note.id)
             self.cursor.execute(update_notedate, note.lastModified, note.id)
