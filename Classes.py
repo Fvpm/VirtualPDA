@@ -61,7 +61,10 @@ class DatabaseManager(object):
         self.cursor.execute(add_newuser, (1, "x1pho3nc0rp", "Alex"))
         #Comment out line underneath after testing delete. Error should occur when userlist[0].username is called, this means it is working
         #self.cursor.execute(delete_user, ident2)
-        #self.cursor.execute(modify_user, ident) Needs more work
+        #self.cursor.execute(modify_user, ident) #Needs more work
+        self.cursor.execute("UPDATE users "
+                       "SET username = %s "
+                       "WHERE user_id = %s", ident)
         self.startup()
         print(self.userManager.userList[0].username)
         print(self.userManager.userList[0].password)
