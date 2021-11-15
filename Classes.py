@@ -43,26 +43,8 @@ class DatabaseManager(object):
         
         #Database
         self.cursor = self.database.cursor(buffered=True)
+        #self.cursor.execute("DROP DATABASE {};".format(self.serviceId))
         self.verifyDatabase()
-
-        #self.createDatabase(serviceId)
-        #self.verifyDatabase(serviceId)
-        #Code placed here for testing purposes
-        #add_newuser=("INSERT INTO users"
-        #             "(user_id, password, username)"
-        #             "VALUES (%s, %s, %s)")
-        #modify_user = ("UPDATE users "
-        #               "SET username = %s "
-        #               "WHERE user_id = %s")
-        #ident = ("Damon", 1)
-        #self.cursor.execute(add_newuser, (1, "x1pho3nc0rp", "Alex"))
-        #self.cursor.execute(modify_user, ident)
-        
-        #self.startup()
-        #print(self.userManager.userList[0].username)
-        #print(self.userManager.userList[0].password)
-        #print(self.userManager.userList[0].id)
-        #End of test purpose code
 
     def startup(self) -> list:
         """Creates managers and loads in their data from database. Returns list of [userManager, noteManager, groupManger, and guiManager]"""
@@ -403,9 +385,6 @@ class UserManager(object):
     def login(self, username, password):
         """Searches for user with username and checks validity of password. Returns True if success and False if any type of failure (username not found / password invalid)"""
         for user in self.userList:
-            print(user.getPassword() + " " + user.getUsername())
-            print(username + ":" + user.getUsername())
-            print(password + ":" + user.getPassword())
             if username == user.getUsername() and password == user.getPassword():
                 currentUser = user
                 return True
@@ -476,6 +455,7 @@ class GUIManager(object):
 
         self.guiDict["login"] = LoginGUI(self.managerList, self.root)
         self.guiDict["register"] = RegisterGUI(self.managerList, self.root)
+        self.guiDict["home"] = HomeGUI(self.managerList, self.root)
 
         self.openWindow("login")
 
@@ -628,6 +608,57 @@ class RegisterGUI(AbstractGUI):
     def backToLogin(self):
         self.guiManager.openWindow("login")
 
+class HomeGUI(AbstractGUI):
+    def __init__(self, managerList, parent):
+        super().__init__(managerList, parent)
+        self.window.geometry("800x600")
+
+        backButton = Button(self.window, text = "<-", command = self.backToLogin)
+        backButton.pack(side = TOP, anchor = "nw")
+
+        self.menubar = Menu(self.window)
+        self.emptyMenubar = Menu(self.window)
+
+        userMenu = Menu(self.menubar, tearoff=0)
+        userMenu.add_command(label="Logout", command=None)
+        userMenu.add_command(label="Change Password", command = None)
+        userMenu.add_command(label="Groups",command = None)
+        self.menubar.add_cascade(label="User", menu=userMenu)
+
+        memoMenu = Menu(self.menubar, tearoff=0)
+        memoMenu.add_command(label="New", command=None)
+        memoMenu.add_command(label="Search", command=None)
+        memoMenu.add_command(label="Delete", command=None)
+        memoMenu.add_command(label="Share", command=None)
+        self.menubar.add_cascade(label="Memo", menu=memoMenu)
+
+        self.window.config(menu=self.menubar)
+
+    def show(self):
+        super().show()
+        #self.window.config(menu=self.menubar)
+
+    def hide(self):
+        super().hide()
+        #self.window.config(menu=self.emptyMenubar)
+
+    def openShareWindow(self):
+        pass
+
+    def deleteCurrentFile(self):
+        pass
+
+    def openSearchWindow(self):
+        pass
+
+    def createNewFile(self):
+        pass
+
+    def backToLogin(self):
+        self.guiManager.openWindow("login")
+
+    def openPasswordChangeWindow(self):
+        pass
 
 
 #Data Objects (model)
