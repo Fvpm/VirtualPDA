@@ -45,7 +45,6 @@ class DatabaseManager(object):
         self.cursor = self.database.cursor(buffered=True)
         self.verifyDatabase()
 
-        #self.cursor.execute("DROP DATABASE {}".format(serviceId))
         #self.createDatabase(serviceId)
         #self.verifyDatabase(serviceId)
         #Code placed here for testing purposes
@@ -130,8 +129,8 @@ class DatabaseManager(object):
         TABLES['users'] = (
             "CREATE TABLE `users` ("
             " `user_id` int(12) NOT NULL AUTO_INCREMENT,"
-            " `password` varchar(16),"
             " `username` varchar(16),"
+            " `password` varchar(16),"
             " PRIMARY KEY(`user_id`)"
             ") ENGINE=InnoDB")
         TABLES['notes'] = (
@@ -291,10 +290,10 @@ class DatabaseManager(object):
         delete_usergrouping=("DELETE FROM usergroups WHERE user_id = %s")
         delete_usernotes=("DELETE FROM notes WHERE user_id = %s")
         add_newuser=("INSERT INTO users"
-                     "(user_id, password, username)"
+                     "(user_id, username, password)"
                      "VALUES (%s, %s, %s)")
         if user.getNew() == True:
-            self.cursor.execute(add_newuser, user.id, user.username, user.password)
+            self.cursor.execute(add_newuser, (user.id, user.username, user.password))
         elif user.getMark() == True:
             ident = (user.id, )
             self.cursor.execute(delete_user, ident)
@@ -303,8 +302,8 @@ class DatabaseManager(object):
             self.cursor.execute(delete_usergrouping, ident)
             self.cursor.execute(delete_usernotes, ident)
         elif user.getUpdate() == True:
-            self.cursor.execute(modify_pass, user.password, user.id)
-            self.cursor.execute(modify_user, user.username, user.id)
+            self.cursor.execute(modify_pass, (user.password, user.id))
+            self.cursor.execute(modify_user, (user.username, user.id))
         
     def saveNotes(self, note):
         #Not fully implemented yet
@@ -392,19 +391,35 @@ class DatabaseManager(object):
 class UserManager(object):
     def __init__(self):
         self.userList = []
-        self.currentUser = None;
+        self.currentUser = None
+        self.nextId = 1
     def setManagers(self, _databaseManager, _groupManager, _noteManager, _guiManager):
         """Because Managers have to be made all at once and reference each other, this function is called when this object is created on startup but after all managers are initalized"""
         self.databaseManager = _databaseManager
         self.userManager = _groupManager
         self.noteManager = _noteManager
         self.guiManager = _guiManager
+
     def login(self, username, password):
         """Searches for user with username and checks validity of password. Returns True if success and False if any type of failure (username not found / password invalid)"""
-        pass
+        for user in self.userList:
+            print(user.getPassword() + " " + user.getUsername())
+            print(username + ":" + user.getUsername())
+            print(password + ":" + user.getPassword())
+            if username == user.getUsername() and password == user.getPassword():
+                currentUser = user
+                return True
+        return False
+
+    def newUser(self, username, password):
+        user = self.addUser(self.nextId, password, username)
+        user.setNew(True)
     def addUser(self, userId, password, username):
+        if(userId >= self.nextId):
+            self.nextId = userId + 1
         newUser = User(userId, username, password)
         self.userList.append(newUser)
+        return newUser
     def userJoinGroup(self, user, group):
         if group not in user.getGroups():
             user.addGroup(group)
@@ -518,6 +533,7 @@ class AbstractGUI(object):
     def onClose(self):
         """Closing any window using the system's red X will close the program. This is a helper function for the event handler set up in __init__ in order to do so."""
         self.guiManager.end()
+        self.databaseManager.saveDatabase()
 
 
 class LoginGUI(AbstractGUI):
@@ -564,6 +580,8 @@ class LoginGUI(AbstractGUI):
         userName = self.userNameEntry.get()
         password = self.passwordEntry.get()
         success = self.userManager.login(userName,password)
+        print(success)
+        print("580")
         if success:
             self.guiManager.openWindow("home")
         else:
@@ -582,6 +600,31 @@ class RegisterGUI(AbstractGUI):
         backButton = Button(self.window, text = "<-", command = self.backToLogin)
         backButton.pack(side = TOP, anchor = "nw")
 
+        usernameLabel = Label(self.window, text = "Username:")
+        passwordLabel = Label(self.window, text = "Password:")
+        confirmPasswordLabel = Label(self.window, text = "Confirm Password:")
+        registerButton = Button(self.window, text = "Register", command = self.newUser)
+
+        self.usernameEntry = Entry(self.window)
+        self.passwordEntry = Entry(self.window)
+        self.confirmPasswordEntry = Entry(self.window)
+
+        usernameLabel.pack()
+        self.usernameEntry.pack()
+        passwordLabel.pack()
+        self.passwordEntry.pack()
+        confirmPasswordLabel.pack()
+        self.confirmPasswordEntry.pack()
+
+        registerButton.pack()
+
+    def newUser(self):
+        #TODO confirm password
+        username = self.usernameEntry.get()
+        password = self.passwordEntry.get()
+        self.userManager.newUser(username, password)
+        self.backToLogin()
+
     def backToLogin(self):
         self.guiManager.openWindow("login")
 
@@ -598,22 +641,22 @@ class DataObjects(object):
         self.mark = False
         self.new = False
         
-    def getUpdate():
+    def getUpdate(self):
         return self.update
         
-    def getMark():
+    def getMark(self):
         return self.mark
         
-    def getNew():
+    def getNew(self):
         return self.new
     
-    def setUpdate(change: bool):
+    def setUpdate(self, change: bool):
         self.update = change
         
-    def setMark():
-        self.update = True
+    def setMark(self):
+        self.mark = True
         
-    def setNew(change: bool):
+    def setNew(self, change: bool):
         self.new = change
 
 
@@ -669,7 +712,7 @@ class User(DataObjects):
 
     def getUsername(self) -> str:
         """Returns username, a string identifier for the user object"""
-        return self.userName
+        return self.username
 
     def getGroups(self) -> list:
         """Returns a list of group objects the user is a part of"""
@@ -679,7 +722,11 @@ class User(DataObjects):
         """Returns a list of note objects the user has access to"""
         return self.notes
 
+    def getPassword(self) -> str:
+        return self.password
+
     def checkPassword(self, attempt: str) -> bool:
+        #TODO evaluate usefulness
         """Returns True if password attempt is correct and False otherwise"""
         if attempt == self.password:
             return True
