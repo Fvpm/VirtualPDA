@@ -67,6 +67,8 @@ class DatabaseManager(object):
 
     def verifyDatabase(self):
         """Checks that the database is in the correct format. Otherwise, it creates the database in the correct format."""
+        """Precondition: MySQL is installed on computer
+        Postcondition: VirtualPDA database should be on computer and accessed"""
         try:
             self.cursor.execute("USE {}".format(self.serviceId))
             self.cursor.execute("SELECT user_id FROM users")
@@ -106,6 +108,8 @@ class DatabaseManager(object):
         
     def createDatabase(self, serviceId):
         """Creates all the tables in the database if there wasn't already a database"""
+        """Precondition: MySQL is installed on computer
+        Postcondition: VirtualPDA database should be on computer"""
         TABLES = {}
 
         TABLES['users'] = (
@@ -185,6 +189,8 @@ class DatabaseManager(object):
 
     def loadUsers(self):
         """Will load user data into self.userManager"""
+        """Precondition: There is data to be loaded
+        Postcondition: Data should be loaded from database into program"""
         self.cursor.fetchall()
         loadusers = ("SELECT * FROM users")
         self.cursor.execute(loadusers)
@@ -201,6 +207,8 @@ class DatabaseManager(object):
 
     def loadNotes(self):
         """Will load database data into self.noteManager"""
+        """Precondition: There is data to be loaded
+        Postcondition: Data should be loaded from database into program"""
         loadnotes = ("SELECT * FROM notes")
         self.cursor.execute(loadnotes)
         load = self.cursor.fetchall()
@@ -229,6 +237,8 @@ class DatabaseManager(object):
 
     def loadGroups(self):
         """Will load database data into self.groupManager"""
+        """Precondition: There is data to be loaded
+        Postcondition: Data should be loaded from database into program"""
         loadgroups = ("SELECT * FROM usergroups")
         self.cursor.execute(loadgroups)
         load = self.cursor.fetchall()
@@ -245,6 +255,8 @@ class DatabaseManager(object):
     
     def saveDatabase(self):
         """Saves and updates the database"""
+        """Precondition: There is data to be saved
+        Postcondition: Data should be loaded from program into the database"""
         for User in self.userManager.userList:
             self.saveUsers(User)
             User.setNew(False)
@@ -260,6 +272,8 @@ class DatabaseManager(object):
         self.database.commit()
         
     def saveUsers(self, user):
+        """Precondition: User ID is not 0. ID should be 12 digits long at max. Username and Password should be 16 characters long at max.
+        Postcondition: User data should be saved to the database"""
         modify_pass = ("UPDATE users "
                        "SET password = %s "
                        "WHERE user_id = %s")
@@ -289,6 +303,8 @@ class DatabaseManager(object):
         
     def saveNotes(self, note):
         #Not fully implemented yet
+        """Precondition: Note ID is not 0. Note ID and User ID are 12 digits long at max. Importance is two digits long at max. Title is 15 characters long at max. Color is 10 characters long at max.
+        Postcondition: Note data should be saved to the database"""
         add_usercon = ("INSERT INTO usercon"
                         "(user_id, note_id)"
                         "VALUES (%s, %s)")
@@ -331,6 +347,8 @@ class DatabaseManager(object):
         
     def saveGroups(self, group):
         #Not fully implemented yet
+        """Precondition: Group ID is not 0. Group ID and User ID are 12 digits long at max. Name is 30 characters long at max. Description is 180 characters long at max.
+        Postcondition: Group data should be saved to the database"""
         new_group = ("INSERT INTO usergroups"
                      "(group_id, name, description, user_id, privacy)"
                      "VALUES (%s, %s, %s, %s, %s)")
@@ -667,6 +685,8 @@ class HomeGUI(AbstractGUI):
 
 class DataObjects(object):
     def __init__(self, _id):
+        """Precondition: _id is not 0
+        Postcondition: Child object is initialized"""
         self.id = _id
         self.update = False
         self.mark = False
@@ -695,6 +715,8 @@ class Note(DataObjects):
     
     def __init__(self, _id: int, _owner, _dateMade: str, _lastModified: str, _text: str, _eventDate: str,
                  _importance: int, _title: str, _color: str, _repeating: str):
+        """Precondition: _id is not 0. _owner is not 0.
+        Postcondition: Note object is initialized"""
         super().__init__(_id)
         self.owner = _owner
         self.dateMade = _dateMade
@@ -710,20 +732,24 @@ class Note(DataObjects):
 
     def edit(self, entertext):
         """Currently only allows adding to text, will eventually allow for full editing of text"""
-        self.text += entertext
+        self.text = entertext
         
     def delete(self):
+        #TODO evaluate usefulness
         """delete the note"""
+        pass
         
     def share(self, shareuser):
         """share note with other users"""
         self.vis.append(shareuser)
         
     def toggleNewNote(self):
+        #TODO evaluate usefulness
         "Changes new from false to True"
         self.new = True
         
     def deleteNote(self):
+        #TODO evaluate usefulness
         "Marks the note for deletion"
         self.mark = True
 
@@ -731,6 +757,8 @@ class Note(DataObjects):
 class User(DataObjects):
     def __init__(self, _id: int, _username: str, _password: str):
         """Groups and notes are filled in separately by userManager when appropriate"""
+        """Precondition: _id is not 0
+        Postcondition: User object is initialized"""
         super().__init__(_id)
         self.username = _username
         self.password = _password
@@ -790,16 +818,20 @@ class User(DataObjects):
         self.notes.remove(note)
         
     def toggleNewUser(self):
+        #TODO evaluate usefulness
         "Changes new from false to True"
         self.new = True
         
     def deleteUser(self):
+        #TODO evaluate usefulness
         "Marks the user for deletion"
         self.mark = True
 
 
 class Group(DataObjects):
     def __init__(self, _id, _groupname, _desc, _own):
+        """Precondition: _id is not 0. _owner is not 0
+        Postcondition: Group object is initialized"""
         super().__init__(_id)
         self.name = _groupname
         self.description = _desc
@@ -827,10 +859,12 @@ class Group(DataObjects):
             self.isPrivate == True
             
     def toggleNewUser(self):
+        #TODO evaluate usefulness
         "Changes new from false to True"
         self.new = True
         
     def deleteGroup(self):
+        #TODO evaluate usefulness
         "Marks the group for deletion"
         self.mark = True
 
