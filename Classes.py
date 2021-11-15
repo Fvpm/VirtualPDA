@@ -16,17 +16,16 @@ class DatabaseManager(object):
     def __init__(self):
         """Initialize connection to mySQL database. Prompts user for username and password to connect to "localhost" mysql server. Saves this username and password to the machine's keychain so that it only asks on first run."""
 
-        serviceId = 'VirtualPDA' 
-        sqlUsername = keyring.get_password(serviceId, serviceId)
+        #MySql Login
+        self.serviceId = 'VirtualPDA' 
+        sqlUsername = keyring.get_password(self.serviceId, self.serviceId)
         if(sqlUsername is None): #First time running program.
             sqlUsername = input("Enter in mysql server username: ")
             sqlPassword = getpass.getpass()
         else:
-            sqlPassword = keyring.get_password(serviceId, sqlUsername)
-        
+            sqlPassword = keyring.get_password(self.serviceId, sqlUsername)
         unsuccessful = True
         while(unsuccessful):
-            
             try:
                 self.database = mysql.connect(
                     host = "localhost",
@@ -34,35 +33,36 @@ class DatabaseManager(object):
                     passwd = sqlPassword
                 )
                 unsuccessful = False
-
             except Exception as e:
                 print(e)
                 print("Incorrect username and password for localhost mysql server. Please try again.")
                 sqlUsername = input("Enter in mysql server username: ")
                 sqlPassword = getpass.getpass()
-        keyring.set_password(serviceId, serviceId, sqlUsername)
-        keyring.set_password(serviceId, sqlUsername, sqlPassword)
+        keyring.set_password(self.serviceId, self.serviceId, sqlUsername)
+        keyring.set_password(self.serviceId, sqlUsername, sqlPassword)
         
+        #Database
         self.cursor = self.database.cursor(buffered=True)
-        
-        self.cursor.execute("DROP DATABASE {}".format(serviceId))
-        self.createDatabase(serviceId)
-        self.verifyDatabase(serviceId)
+        self.verifyDatabase()
+
+        #self.cursor.execute("DROP DATABASE {}".format(serviceId))
+        #self.createDatabase(serviceId)
+        #self.verifyDatabase(serviceId)
         #Code placed here for testing purposes
-        add_newuser=("INSERT INTO users"
-                     "(user_id, password, username)"
-                     "VALUES (%s, %s, %s)")
-        modify_user = ("UPDATE users "
-                       "SET username = %s "
-                       "WHERE user_id = %s")
-        ident = ("Damon", 1)
-        self.cursor.execute(add_newuser, (1, "x1pho3nc0rp", "Alex"))
-        self.cursor.execute(modify_user, ident)
+        #add_newuser=("INSERT INTO users"
+        #             "(user_id, password, username)"
+        #             "VALUES (%s, %s, %s)")
+        #modify_user = ("UPDATE users "
+        #               "SET username = %s "
+        #               "WHERE user_id = %s")
+        #ident = ("Damon", 1)
+        #self.cursor.execute(add_newuser, (1, "x1pho3nc0rp", "Alex"))
+        #self.cursor.execute(modify_user, ident)
         
-        self.startup()
-        print(self.userManager.userList[0].username)
-        print(self.userManager.userList[0].password)
-        print(self.userManager.userList[0].id)
+        #self.startup()
+        #print(self.userManager.userList[0].username)
+        #print(self.userManager.userList[0].password)
+        #print(self.userManager.userList[0].id)
         #End of test purpose code
 
     def startup(self) -> list:
@@ -84,10 +84,10 @@ class DatabaseManager(object):
         #self.loadGroups()
         return [self.userManager, self.noteManager, self.groupManager, self.guiManager]
 
-    def verifyDatabase(self, serviceId):
+    def verifyDatabase(self):
         """Checks that the database is in the correct format. Otherwise, it creates the database in the correct format."""
         try:
-            print(self.cursor.execute("USE {}".format(serviceId)))
+            self.cursor.execute("USE {}".format(self.serviceId))
             self.cursor.execute("SELECT user_id FROM users")
             self.cursor.execute("SELECT password FROM users")
             self.cursor.execute("SELECT username FROM users")
@@ -114,14 +114,14 @@ class DatabaseManager(object):
             self.cursor.execute("SELECT tag_id FROM tags")
             self.cursor.execute("SELECT tag_text FROM tags")
             self.cursor.execute("SELECT note_id FROM tags")
-            print(self.cursor.execute("SHOW DATABASES;"))
-            print("Acessed")
+            self.cursor.fetchall()
+            print("Accessed")
         except mysql.Error as err:
             if err.errno == errorcode.ER_BAD_DB_ERROR:
-                self.createDatabase(serviceId)
+                self.createDatabase(self.serviceId)
             else:
-                print(err)
-                print("Incorrect database")
+                self.cursor.execute("DROP DATABASE;")
+                self.createDatabase(self.serviceId)
         
     def createDatabase(self, serviceId):
         """Creates all the tables in the database if there wasn't already a database"""
@@ -204,6 +204,7 @@ class DatabaseManager(object):
 
     def loadUsers(self):
         """Will load user data into self.userManager"""
+        self.cursor.fetchall()
         loadusers = ("SELECT * FROM users")
         self.cursor.execute(loadusers)
         load = self.cursor.fetchall()
@@ -757,5 +758,12 @@ class Group(DataObjects):
 
 def main():
     dbManager = DatabaseManager()
+    managerList = dbManager.startup()
+    userManager = managerList[0]
+    noteManager = managerList[1]
+    groupManager = managerList[2]
+    guiManager = managerList[3]
+    guiManager.startupGUI()
 
-main()
+if __name__ == "__main__":
+    main()
