@@ -74,7 +74,7 @@ class AbstractGUI(object):
 
     def onClose(self):
         """Closing any window using the system's red X will close the program. This is a helper function for the event handler set up in __init__ in order to do so."""
-        #self.guiManager.end()
+        self.guiManager.end()
 
 
 class LoginGUI(AbstractGUI):
