@@ -692,6 +692,10 @@ class DataObjects(object):
         self.mark = False
         self.new = False
         
+    def getId(self) -> int:
+        """Returns self.id, an Integer representing a unique UserID"""
+        return self.id
+        
     def getUpdate(self):
         return self.update
         
@@ -700,6 +704,9 @@ class DataObjects(object):
         
     def getNew(self):
         return self.new
+    
+    def setId(self, nId):
+        self.id = nId
     
     def setUpdate(self, change: bool):
         self.update = change
@@ -736,40 +743,70 @@ class Note(DataObjects):
         
     def share(self, shareuser):
         """share note with other users"""
-        self.vis.append(shareuser)
+        self.visibleBy.append(shareuser)
         
     def getOwner(self):
         return self.owner
     
-    def getOwner(self):
-        return self.owner
+    def getDateMade(self):
+        return self.dateMade
     
-    def getOwner(self):
-        return self.owner
+    def getModified(self):
+        return self.lastModified
     
-    def getOwner(self):
-        return self.owner
+    def getText(self):
+        return self.text
     
-    def getOwner(self):
-        return self.owner
+    def getEvent(self):
+        return self.eventDate
     
-    def getOwner(self):
-        return self.owner
+    def getImportance(self):
+        return self.importance
     
-    def getOwner(self):
-        return self.owner
+    def getTitle(self):
+        return self.title
     
-    def getOwner(self):
-        return self.owner
+    def getColor(self):
+        return self.color
     
-    def getOwner(self):
-        return self.owner
+    def getRepeating(self):
+        return self.repeating
     
-    def getOwner(self):
-        return self.owner
+    def getTags(self):
+        return self.tags
     
-    def getOwner(self):
-        return self.owner
+    def getVisibility(self):
+        return self.visibleBy
+    
+    def setOwner(self, nOwner):
+        self.owner = nOwner
+    
+    def setDateMade(self, nDate):
+        self.dateMade = nDate
+    
+    def setModified(self, nModified):
+        self.lastModified = nModified
+    
+    def setEvent(self, nEvent):
+        self.eventDate = nEvent
+    
+    def setImportance(self, nImportance):
+        self.importance = nImportance
+    
+    def setTitle(self, nTitle):
+        self.title = nTitle
+    
+    def setColor(self, nColor):
+        self.color = nColor
+    
+    def setRepeating(self, nRepeating):
+        self.repeating = nRepeating
+    
+    def setTags(self, nTags):
+        self.tags = nTags
+    
+    def setVisibility(self, nVisibility):
+        self.visibleBy = nVisibility
 
 
 class User(DataObjects):
@@ -782,10 +819,6 @@ class User(DataObjects):
         self.password = _password
         self.groups = []
         self.notes = []
-
-    def getId(self) -> int:
-        """Returns self.id, an Integer representing a unique UserID"""
-        return self.id
 
     def getUsername(self) -> str:
         """Returns username, a string identifier for the user object"""
@@ -801,14 +834,12 @@ class User(DataObjects):
 
     def getPassword(self) -> str:
         return self.password
+    
+    def setGroups(self, nGroups):
+        self.groups = nGroups
 
-    def checkPassword(self, attempt: str) -> bool:
-        #TODO evaluate usefulness
-        """Returns True if password attempt is correct and False otherwise"""
-        if attempt == self.password:
-            return True
-        else:
-            return False
+    def setNotes(self, nNotes):
+        self.notes = nNotes
         
     def changePassword(self, oldPassword: str, newPassword: str):
         """Changes password if the old password is correct"""
@@ -834,17 +865,6 @@ class User(DataObjects):
     def removeNote(self, note):
         """removes note from note list"""
         self.notes.remove(note)
-        
-    def toggleNewUser(self):
-        #TODO evaluate usefulness
-        "Changes new from false to True"
-        self.new = True
-        
-    def deleteUser(self):
-        #TODO evaluate usefulness
-        "Marks the user for deletion"
-        self.mark = True
-
 
 class Group(DataObjects):
     def __init__(self, _id, _groupname, _desc, _own):
@@ -876,20 +896,35 @@ class Group(DataObjects):
         else:
             self.isPrivate == True
             
-    def getOwner(self):
-        return self.owner
+    def getName(self):
+        return self.name
+    
+    def getDescription(self):
+        return self.description
     
     def getOwner(self):
         return self.owner
     
-    def getOwner(self):
-        return self.owner
+    def getPrivacy(self):
+        return self.isPrivate
     
-    def getOwner(self):
-        return self.owner
+    def getMembers(self):
+        return self.members
     
-    def getOwner(self):
-        return self.owner
+    def setName(self, nName):
+        self.name = nName
+    
+    def setDescription(self, nDescription):
+        self.description = nDescription
+    
+    def setOwner(self, nOwner):
+        self.owner = nOwner
+    
+    def setPrivacy(self, nPrivate):
+        self.isPrivate = nPrivate
+    
+    def setMembers(self, nMembers):
+        self.members = nMembers
 
 def main():
     dbManager = DatabaseManager()
