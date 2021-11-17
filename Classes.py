@@ -734,24 +734,42 @@ class Note(DataObjects):
         """Currently only allows adding to text, will eventually allow for full editing of text"""
         self.text = entertext
         
-    def delete(self):
-        #TODO evaluate usefulness
-        """delete the note"""
-        pass
-        
     def share(self, shareuser):
         """share note with other users"""
         self.vis.append(shareuser)
         
-    def toggleNewNote(self):
-        #TODO evaluate usefulness
-        "Changes new from false to True"
-        self.new = True
-        
-    def deleteNote(self):
-        #TODO evaluate usefulness
-        "Marks the note for deletion"
-        self.mark = True
+    def getOwner(self):
+        return self.owner
+    
+    def getOwner(self):
+        return self.owner
+    
+    def getOwner(self):
+        return self.owner
+    
+    def getOwner(self):
+        return self.owner
+    
+    def getOwner(self):
+        return self.owner
+    
+    def getOwner(self):
+        return self.owner
+    
+    def getOwner(self):
+        return self.owner
+    
+    def getOwner(self):
+        return self.owner
+    
+    def getOwner(self):
+        return self.owner
+    
+    def getOwner(self):
+        return self.owner
+    
+    def getOwner(self):
+        return self.owner
 
 
 class User(DataObjects):
@@ -858,15 +876,20 @@ class Group(DataObjects):
         else:
             self.isPrivate == True
             
-    def toggleNewUser(self):
-        #TODO evaluate usefulness
-        "Changes new from false to True"
-        self.new = True
-        
-    def deleteGroup(self):
-        #TODO evaluate usefulness
-        "Marks the group for deletion"
-        self.mark = True
+    def getOwner(self):
+        return self.owner
+    
+    def getOwner(self):
+        return self.owner
+    
+    def getOwner(self):
+        return self.owner
+    
+    def getOwner(self):
+        return self.owner
+    
+    def getOwner(self):
+        return self.owner
 
 def main():
     dbManager = DatabaseManager()
