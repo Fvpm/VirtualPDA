@@ -340,7 +340,7 @@ class DatabaseManager(object):
         elif note.getUpdate() == True:
             tags = note.getTags()
             oldtags = note.getOldTags()
-            count = 0;
+            count = 0
             for tag in tags:
                 for oldtag in oldtags:
                     if tag == oldtag:
@@ -352,11 +352,16 @@ class DatabaseManager(object):
             for oldtag in oldtags:
                 for tag in tags:
                     if oldtag == tag:
-                        count += 1;
+                        count += 1
                 if count == 0:
                     self.cursor.execute(remove_tag, oldtag[0], note.getId())
-                    
-            #self.cursor.execute(add_usercon, shareuser, note.id) More work needed
+            count = 0
+            for shareuser in note.getVisibility():
+                for olduser in note.getOldVisibility():
+                    if shareuser == olduser:
+                        count += 1
+                if count == 0:    
+                    self.cursor.execute(add_usercon, shareuser, note.getId())
             self.cursor.execute(update_notedata, note.getText(), note.getId())
             self.cursor.execute(update_notedate, note.getModified(), note.getId())
         
