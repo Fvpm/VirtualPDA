@@ -302,7 +302,6 @@ class DatabaseManager(object):
             self.cursor.execute(modify_user, (user.username, user.getId()))
         
     def saveNotes(self, note):
-        #Not fully implemented yet
         """Precondition: Note ID is not 0. Note ID and User ID are 12 digits long at max. Importance is two digits long at max. Title is 15 characters long at max. Color is 10 characters long at max.
         Postcondition: Note data should be saved to the database"""
         add_usercon = ("INSERT INTO usercon"
@@ -311,6 +310,7 @@ class DatabaseManager(object):
         delete_note = ("DELETE FROM notes WHERE note_id = %s")
         delete_notegroup=("DELETE FROM groupcon WHERE note_id = %s")
         delete_noteuser=("DELETE FROM usercon WHERE note_id = %s")
+        delete_notecon=("DELETE FROM usercon WHERE note_id = %s AND user_id = %s")
         delete_notetag=("DELETE FROM tags WHERE note_id = %s")
         remove_tag = ("DELETE FROM tags WHERE tag_id = %s AND note_id = %s")
         add_tag = ("INSERT INTO tags"
@@ -340,8 +340,8 @@ class DatabaseManager(object):
         elif note.getUpdate() == True:
             tags = note.getTags()
             oldtags = note.getOldTags()
-            count = 0
             for tag in tags:
+                count = 0
                 for oldtag in oldtags:
                     if tag == oldtag:
                         count += 1
@@ -350,18 +350,29 @@ class DatabaseManager(object):
             
             count = oldtags.length()
             for oldtag in oldtags:
+                count = 0
                 for tag in tags:
                     if oldtag == tag:
                         count += 1
                 if count == 0:
                     self.cursor.execute(remove_tag, oldtag[0], note.getId())
-            count = 0
+            
             for shareuser in note.getVisibility():
+                count = 0
                 for olduser in note.getOldVisibility():
                     if shareuser == olduser:
                         count += 1
                 if count == 0:    
                     self.cursor.execute(add_usercon, shareuser, note.getId())
+            
+            for olduser in note.getOldVisibility():
+                count = 0
+                for shareuser in note.getVisibility():
+                    if olduser == shareuser:
+                        count += 1
+                if count == 0:
+                    conident = (note.getId(), olduser)
+                    self.cursor.execute(delete_notecon, conident)
             self.cursor.execute(update_notedata, note.getText(), note.getId())
             self.cursor.execute(update_notedate, note.getModified(), note.getId())
         
@@ -387,7 +398,7 @@ class DatabaseManager(object):
         modify_name = ("UPDATE usergroups "
                        "SET name = %s "
                        "WHERE group_id = %s")
-        remove_user=("DELETE FROM groupmem WHERE user_id = %s")
+        remove_user=("DELETE FROM groupmem WHERE user_id = %s AND group_id = %s")
         modify_desc = ("UPDATE usergroups "
                        "SET description = %s "
                        "WHERE group_id = %s")
