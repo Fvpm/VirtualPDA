@@ -61,8 +61,8 @@ class DatabaseManager(object):
 
         #load data from database
         self.loadUsers()
-        #self.loadNotes()
-        #self.loadGroups()
+        self.loadNotes()
+        self.loadGroups()
         return [self.userManager, self.noteManager, self.groupManager, self.guiManager]
 
     def verifyDatabase(self):
@@ -210,6 +210,7 @@ class DatabaseManager(object):
         """Precondition: There is data to be loaded
         Postcondition: Data should be loaded from database into program"""
         loadnotes = ("SELECT * FROM notes")
+        loadtags = ("SELECT * FROM tags")
         self.cursor.execute(loadnotes)
         load = self.cursor.fetchall()
         for note in load:
@@ -234,6 +235,15 @@ class DatabaseManager(object):
             if type(note[9]) is not str:
                 note[9] = str(note[9])
             self.noteManager.addNote(note[0], note[1], note[2], note[3], note[4], note[5], note[6], note[7], note[8], note[9])
+        self.cursor.execute(loadtags)
+        load = self.cursor.fetchall()
+        for tag in load:
+            if tag[0] == note[0]:
+                if type(tag[0]) is not int:
+                    tag[0] = int(tag[0])
+                if type(note[1]) is not str:
+                    tag[1] = str(tag[1])
+                self.noteManager.notelist[note[0]].addTag((tag[0], tag[1]))
 
     def loadGroups(self):
         """Will load database data into self.groupManager"""
@@ -348,7 +358,6 @@ class DatabaseManager(object):
                 if count == 0:
                     self.cursor.execute(add_tag, tag[0], tag[1], note.getId())
             
-            count = oldtags.length()
             for oldtag in oldtags:
                 count = 0
                 for tag in tags:
@@ -377,7 +386,6 @@ class DatabaseManager(object):
             self.cursor.execute(update_notedate, note.getModified(), note.getId())
         
     def saveGroups(self, group):
-        #Not fully implemented yet
         """Precondition: Group ID is not 0. Group ID and User ID are 12 digits long at max. Name is 30 characters long at max. Description is 180 characters long at max.
         Postcondition: Group data should be saved to the database"""
         new_group = ("INSERT INTO usergroups"
@@ -391,7 +399,7 @@ class DatabaseManager(object):
                         "VALUES (%s, %s)")
         delete_group = ("DELETE FROM usergroups WHERE group_id = %s")
         delete_groupmem=("DELETE FROM groupmem WHERE group_id = %s")
-        delete_groupnote=("DELETE FROM groupcon WHERE group_id = %s")
+        delete_groupnote=("DELETE FROM groupcon WHERE group_id = %s AND note_id = %s")
         modify_privacy = ("UPDATE usergroups "
                        "SET privacy = %s "
                        "WHERE group_id = %s")
@@ -412,12 +420,48 @@ class DatabaseManager(object):
             self.cursor.execute(delete_groupmem, ident)
             self.cursor.execute(delete_groupnote, ident)
         elif group.getUpdate() == True:
-            #self.cursor.execute(add_groupmem, group.id, self.id)
-            #self.cursor.execute(add_groupcon, groupid, noteid)
             self.cursor.execute(modify_desc, group.getDescription(), group.getId())
-            #self.cursor.execute(remove_user, memind)
             self.cursor.execute(modify_name, group.getName(), group.getId())
             self.cursor.execute(modify_privacy, group.getPrivacy(), group.getId())
+            oldmembers = group.getOldMembers()
+            members = group.getMembers()
+            for member in members:
+                count = 0
+                for oldmember in oldmembers:
+                    if member == oldmember:
+                        count += 1
+                if count == 0:
+                    self.cursor.execute(add_groupmem, group.getId(), member)
+                    
+            for oldmember in oldmembers:
+                count = 0
+                for member in members:
+                    if oldmember == member:
+                        count += 1
+                if count == 0:
+                    memident = (oldmember, group.getId())
+                    self.cursor.execute(remove_user, memident)
+                    
+            notes = group.getNotes()
+            oldnotes = group.getOldNotes()
+            
+            for note in notes:
+                count = 0
+                for oldnote in oldnotes:
+                    if note == oldnote:
+                        count += 1
+                if count == 0:
+                    self.cursor.execute(add_groupcon, group.getId(), note)
+                    
+            for oldnote in oldnotes:
+                count = 0
+                for note in notes:
+                    if oldnote == note:
+                        count += 1
+                if count == 0:
+                    noteident = (group.getId(), oldnote)
+                    self.cursor.execute(delete_groupnote, noteident)               
+            
 
 class UserManager(object):
     def __init__(self):
@@ -907,6 +951,7 @@ class Group(DataObjects):
         self.owner = _own
         self.isPrivate = True
         self.members = [_own]
+        self.notes = []
         
     def addUser(self, newuser):
         self.members.append(newuser)
