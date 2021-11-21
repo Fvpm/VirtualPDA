@@ -211,11 +211,13 @@ class DatabaseManager(object):
         Postcondition: Data should be loaded from database into program"""
         loadnotes = ("SELECT * FROM notes")
         loadtags = ("SELECT * FROM tags")
+        loadcon = ("SELECT * FROM usercon")
         self.cursor.execute(loadnotes)
         load = self.cursor.fetchall()
         self.cursor.execute(loadtags)
         load2 = self.cursor.fetchall()
-        count = 0
+        self.cursor.execute(loadcon)
+        load3 = self.cursor.fetchall()
         for note in load:
             if type(note[0]) is not int:
                 note[0] = int(note[0])
@@ -238,15 +240,20 @@ class DatabaseManager(object):
             if type(note[9]) is not str:
                 note[9] = str(note[9])
             self.noteManager.addNote(note[0], note[1], note[2], note[3], note[4], note[5], note[6], note[7], note[8], note[9])
+        for note in self.noteManager.noteList:
             for tag in load2:
-                if tag[0] == note[0]:
+                if tag[0] == note.getId():
                     if type(tag[0]) is not int:
                         tag[0] = int(tag[0])
-                    if type(note[1]) is not str:
+                    if type(tag[1]) is not str:
                         tag[1] = str(tag[1])
-                    self.noteManager.notelist[count].addTag((tag[0], tag[1]))
-            self.noteManager.notelist[count].fillOldTags()
-            count += 1
+                    note.addTag((tag[0], tag[1]))
+            note.fillOldTags()
+            for con in load3:
+                if con[1] == note.getId():
+                    if type(con[0]) is not int:
+                        con[0] = int(con[0])
+                    note.share(con[0])
         
 
     def loadGroups(self):
@@ -816,6 +823,7 @@ class Note(DataObjects):
         self.tags = []
         self.oldTags = []
         self.visibleBy = []
+        self.oldVisibility = []
 
     def edit(self, entertext):
         """Currently only allows adding to text, will eventually allow for full editing of text"""
@@ -836,6 +844,16 @@ class Note(DataObjects):
     def fillOldTags(self):
         for tag in self.tags:
             self.oldTags.append(tag)
+            
+    def fillOldUsers(self):
+        for user in self.visibleBy:
+            self.oldVisibility.append(user)
+            
+    def getOldVisibility(self):
+        return self.oldVisibility
+    
+    def getOldTags(self):
+        return self.OldTags
         
     def getOwner(self):
         return self.owner
@@ -1001,6 +1019,12 @@ class Group(DataObjects):
     def fillOldNotes(self):
         for note in self.notes:
             self.oldNotes.append(note)
+            
+    def getOldNotes(self):
+        return self.oldNotes
+    
+    def getOldMembers(self):
+        return self.oldMembers
             
     def getName(self):
         return self.name
