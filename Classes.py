@@ -213,6 +213,9 @@ class DatabaseManager(object):
         loadtags = ("SELECT * FROM tags")
         self.cursor.execute(loadnotes)
         load = self.cursor.fetchall()
+        self.cursor.execute(loadtags)
+        load2 = self.cursor.fetchall()
+        count = 0
         for note in load:
             if type(note[0]) is not int:
                 note[0] = int(note[0])
@@ -235,15 +238,16 @@ class DatabaseManager(object):
             if type(note[9]) is not str:
                 note[9] = str(note[9])
             self.noteManager.addNote(note[0], note[1], note[2], note[3], note[4], note[5], note[6], note[7], note[8], note[9])
-        self.cursor.execute(loadtags)
-        load = self.cursor.fetchall()
-        for tag in load:
-            if tag[0] == note[0]:
-                if type(tag[0]) is not int:
-                    tag[0] = int(tag[0])
-                if type(note[1]) is not str:
-                    tag[1] = str(tag[1])
-                self.noteManager.notelist[note[0]].addTag((tag[0], tag[1]))
+            for tag in load2:
+                if tag[0] == note[0]:
+                    if type(tag[0]) is not int:
+                        tag[0] = int(tag[0])
+                    if type(note[1]) is not str:
+                        tag[1] = str(tag[1])
+                    self.noteManager.notelist[count].addTag((tag[0], tag[1]))
+            self.noteManager.notelist[count].fillOldTags()
+            count += 1
+        
 
     def loadGroups(self):
         """Will load database data into self.groupManager"""
@@ -810,6 +814,7 @@ class Note(DataObjects):
         self.color = _color
         self.repeating = _repeating
         self.tags = []
+        self.oldTags = []
         self.visibleBy = []
 
     def edit(self, entertext):
@@ -819,6 +824,18 @@ class Note(DataObjects):
     def share(self, shareuser):
         """share note with other users"""
         self.visibleBy.append(shareuser)
+        
+    def addTag(self, newtag):
+        count = 0
+        for tag in self.tags:
+            if tag == newtag:
+                count += 1
+        if count == 0:
+            self.tags.append(newtag)
+            
+    def fillOldTags(self):
+        for tag in self.tags:
+            self.oldTags.append(tag)
         
     def getOwner(self):
         return self.owner
@@ -951,7 +968,9 @@ class Group(DataObjects):
         self.owner = _own
         self.isPrivate = True
         self.members = [_own]
+        self.oldMembers = []
         self.notes = []
+        self.oldNotes = []
         
     def addUser(self, newuser):
         self.members.append(newuser)
@@ -965,12 +984,23 @@ class Group(DataObjects):
     def editName(self, newname):
         self.name = newname
         
+    def fillOldMembers(self):
+        for member in self.members:
+            self.oldMembers.append(member)
+        
     def togglePrivacy(self):
         """Change the privacy setting of the group"""
         if (self.isPrivate == True):
             self.isPrivate == False
         else:
             self.isPrivate == True
+            
+    def addNote(self, note):
+        self.notes.append(note)
+        
+    def fillOldNotes(self):
+        for note in self.notes:
+            self.oldNotes.append(note)
             
     def getName(self):
         return self.name
