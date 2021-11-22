@@ -261,8 +261,14 @@ class DatabaseManager(object):
         """Precondition: There is data to be loaded
         Postcondition: Data should be loaded from database into program"""
         loadgroups = ("SELECT * FROM usergroups")
+        loadmembers = ("SELECT * FROM groupmem")
+        loadnotes = ("SELECT * FROM groupcon")
         self.cursor.execute(loadgroups)
         load = self.cursor.fetchall()
+        self.cursor.execute(loadmembers)
+        load2 = self.cursor.fetchall()
+        self.cursor.execute(loadnotes)
+        load3 = self.cursor.fetchall()
         for group in load:
             if type(group[0]) is not int:
                 group[0] = int(group[0])
@@ -273,6 +279,19 @@ class DatabaseManager(object):
             if type(group[3]) is not int:
                 group[3] = int(group[3])
             self.groupManager.addGroup(group[0], group[1], group[2], group[3])
+        for group in self.groupManager.groupList:
+            for user in load2:
+                if user[1] == group.getId():
+                    if type(user[0]) is not int:
+                        user[0] = int(user[0])
+                    group.addUser(user[0])
+            group.fillOldMembers()
+            for note in load3:
+                if note[0] == group.getId():
+                    if type(note[1]) is not int:
+                        note[1] = int(note[1])
+                    group.addNote(note[1])
+            group.fillOldNotes()
     
     def saveDatabase(self):
         """Saves and updates the database"""
@@ -411,6 +430,7 @@ class DatabaseManager(object):
         delete_group = ("DELETE FROM usergroups WHERE group_id = %s")
         delete_groupmem=("DELETE FROM groupmem WHERE group_id = %s")
         delete_groupnote=("DELETE FROM groupcon WHERE group_id = %s AND note_id = %s")
+        delete_groupnotes=("DELETE FROM groupcon WHERE group_id = %s")
         modify_privacy = ("UPDATE usergroups "
                        "SET privacy = %s "
                        "WHERE group_id = %s")
@@ -429,7 +449,7 @@ class DatabaseManager(object):
             ident = (group.getId, )
             self.cursor.execute(delete_group, ident)
             self.cursor.execute(delete_groupmem, ident)
-            self.cursor.execute(delete_groupnote, ident)
+            self.cursor.execute(delete_groupnotes, ident)
         elif group.getUpdate() == True:
             self.cursor.execute(modify_desc, group.getDescription(), group.getId())
             self.cursor.execute(modify_name, group.getName(), group.getId())
