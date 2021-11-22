@@ -1,6 +1,3 @@
-"""
-Currently coded for Python only, not coded to work with database
-"""
 from tkinter import *
 import mysql.connector as mysql
 from mysql.connector import errorcode
@@ -802,25 +799,32 @@ class DataObjects(object):
         """Returns self.id, an Integer representing a unique UserID"""
         return self.id
         
-    def getUpdate(self):
+    def getUpdate(self) -> bool:
+        """Returns whether the object needs to be updated in the database or not"""
         return self.update
         
-    def getMark(self):
+    def getMark(self) -> bool:
+        """Returns whether the object needs to be deleted in the database or not"""
         return self.mark
         
-    def getNew(self):
+    def getNew(self) -> bool:
+        """Returns whether the object needs to have a new entry made for it in the database"""
         return self.new
     
-    def setId(self, nId):
+    def setId(self, nId: int):
+        """Changes the id value"""
         self.id = nId
     
     def setUpdate(self, change: bool):
+        """Changes the update value"""
         self.update = change
         
-    def setMark(self):
+    def setMark(self: bool):
+        """Changes the mark value to true since user has to go through a confirmation process before they want something deleted"""
         self.mark = True
         
     def setNew(self, change: bool):
+        """Changes the new value"""
         self.new = change
 
 
@@ -845,15 +849,16 @@ class Note(DataObjects):
         self.visibleBy = []
         self.oldVisibility = []
 
-    def edit(self, entertext):
+    def edit(self, entertext: str):
         """Currently only allows adding to text, will eventually allow for full editing of text"""
         self.text = entertext
         
-    def share(self, shareuser):
+    def share(self, shareuser: int):
         """share note with other users"""
         self.visibleBy.append(shareuser)
         
     def addTag(self, newtag):
+        """Adds a tag to the note"""
         count = 0
         for tag in self.tags:
             if tag == newtag:
@@ -862,80 +867,105 @@ class Note(DataObjects):
             self.tags.append(newtag)
             
     def fillOldTags(self):
+        """Fill the old tag list for when saving occurs"""
         for tag in self.tags:
             self.oldTags.append(tag)
             
     def fillOldUsers(self):
+        """Fill the old user list for when saving occurs"""
         for user in self.visibleBy:
             self.oldVisibility.append(user)
             
     def getOldVisibility(self):
+        """Return the list of old users that can see the note"""
         return self.oldVisibility
     
     def getOldTags(self):
+        """Return the list of old tags that are on the note"""
         return self.OldTags
         
     def getOwner(self):
+        """Return the owner of the note"""
         return self.owner
     
     def getDateMade(self):
+        """Return the date the note was made"""
         return self.dateMade
     
     def getModified(self):
+        """Return the date the note was last modified"""
         return self.lastModified
     
     def getText(self):
+        """Return the text of the note"""
         return self.text
     
     def getEvent(self):
+        """Return the date of the event if there is one"""
         return self.eventDate
     
     def getImportance(self):
+        """Return the importance value of the note if there is one"""
         return self.importance
     
     def getTitle(self):
+        """Return the title of the note if there is one"""
         return self.title
     
     def getColor(self):
+        """Return the color of the note if there is one"""
         return self.color
     
     def getRepeating(self):
+        """Return if the note event repeats or not"""
         return self.repeating
     
     def getTags(self):
+        """Return the list of tags on the note"""
         return self.tags
     
     def getVisibility(self):
+        """Return the list of people who can see the note"""
         return self.visibleBy
     
     def setOwner(self, nOwner):
+        """Change the owner"""
         self.owner = nOwner
     
     def setDateMade(self, nDate):
+        """Change the date the note was made, this should never be executed in actual practice"""
         self.dateMade = nDate
     
     def setModified(self, nModified):
+        """Updates the date the note was modified on"""
         self.lastModified = nModified
     
     def setEvent(self, nEvent):
+        """Set the date of the event"""
         self.eventDate = nEvent
     
     def setImportance(self, nImportance):
+        """Set the importance value of the note"""
         self.importance = nImportance
     
     def setTitle(self, nTitle):
+        """Set the title of the note"""
         self.title = nTitle
     
     def setColor(self, nColor):
+        """Set the color of the note"""
         self.color = nColor
     
     def setRepeating(self, nRepeating):
+        """Set if the note event is repeating or not"""
         self.repeating = nRepeating
     
     def setTags(self, nTags):
+        """Set the tags list"""
         self.tags = nTags
     
     def setVisibility(self, nVisibility):
+        """Set the list of users who can see the note"""
         self.visibleBy = nVisibility
 
 
@@ -963,12 +993,15 @@ class User(DataObjects):
         return self.notes
 
     def getPassword(self) -> str:
+        """Returns the password"""
         return self.password
     
     def setGroups(self, nGroups):
+        """Sets the list of groups"""
         self.groups = nGroups
 
     def setNotes(self, nNotes):
+        """Sets the list of notes"""
         self.notes = nNotes
         
     def changePassword(self, oldPassword: str, newPassword: str):
@@ -1011,18 +1044,23 @@ class Group(DataObjects):
         self.oldNotes = []
         
     def addUser(self, newuser):
+        """Adds a user to the list of users in the group"""
         self.members.append(newuser)
         
     def editDesc(self, newdesc):
+        """Edits the description of the group"""
         self.description = newdesc
         
     def remUser(self, memind):
+        """Removes a user from the group"""
         self.members.remove(memind)
         
     def editName(self, newname):
+        """Edits the name of the group"""
         self.name = newname
         
     def fillOldMembers(self):
+        """Fills the Old Members list for when saving occurs"""
         for member in self.members:
             self.oldMembers.append(member)
         
@@ -1034,46 +1072,48 @@ class Group(DataObjects):
             self.isPrivate == True
             
     def addNote(self, note):
+        """Adds notes to the group note list"""
         self.notes.append(note)
         
     def fillOldNotes(self):
+        """Fills the Old Notes list for when saving occurs"""
         for note in self.notes:
             self.oldNotes.append(note)
             
     def getOldNotes(self):
+        """Return the list of old notes"""
         return self.oldNotes
     
     def getOldMembers(self):
+        """Return the list of old members"""
         return self.oldMembers
             
     def getName(self):
+        """Return the name of the group"""
         return self.name
     
     def getDescription(self):
+        """Return the description of the group"""
         return self.description
     
     def getOwner(self):
+        """Return the owner of the group"""
         return self.owner
     
     def getPrivacy(self):
+        """Return the privacy of the group"""
         return self.isPrivate
     
     def getMembers(self):
+        """Return the list of members of the group"""
         return self.members
     
-    def setName(self, nName):
-        self.name = nName
-    
-    def setDescription(self, nDescription):
-        self.description = nDescription
-    
     def setOwner(self, nOwner):
+        """Changes the owner of the group"""
         self.owner = nOwner
     
-    def setPrivacy(self, nPrivate):
-        self.isPrivate = nPrivate
-    
     def setMembers(self, nMembers):
+        """Changes the member list of the group"""
         self.members = nMembers
 
 def main():
