@@ -1,6 +1,3 @@
-"""
-Currently coded for Python only, not coded to work with database
-"""
 from tkinter import *
 import mysql.connector as mysql
 from mysql.connector import errorcode
@@ -61,8 +58,8 @@ class DatabaseManager(object):
 
         #load data from database
         self.loadUsers()
-        #self.loadNotes()
-        #self.loadGroups()
+        self.loadNotes()
+        self.loadGroups()
         return [self.userManager, self.noteManager, self.groupManager, self.guiManager]
 
     def verifyDatabase(self):
@@ -210,8 +207,14 @@ class DatabaseManager(object):
         """Precondition: There is data to be loaded
         Postcondition: Data should be loaded from database into program"""
         loadnotes = ("SELECT * FROM notes")
+        loadtags = ("SELECT * FROM tags")
+        loadcon = ("SELECT * FROM usercon")
         self.cursor.execute(loadnotes)
         load = self.cursor.fetchall()
+        self.cursor.execute(loadtags)
+        load2 = self.cursor.fetchall()
+        self.cursor.execute(loadcon)
+        load3 = self.cursor.fetchall()
         for note in load:
             if type(note[0]) is not int:
                 note[0] = int(note[0])
@@ -234,14 +237,35 @@ class DatabaseManager(object):
             if type(note[9]) is not str:
                 note[9] = str(note[9])
             self.noteManager.addNote(note[0], note[1], note[2], note[3], note[4], note[5], note[6], note[7], note[8], note[9])
+        for note in self.noteManager.noteList:
+            for tag in load2:
+                if tag[0] == note.getId():
+                    if type(tag[0]) is not int:
+                        tag[0] = int(tag[0])
+                    if type(tag[1]) is not str:
+                        tag[1] = str(tag[1])
+                    note.addTag((tag[0], tag[1]))
+            note.fillOldTags()
+            for con in load3:
+                if con[1] == note.getId():
+                    if type(con[0]) is not int:
+                        con[0] = int(con[0])
+                    note.share(con[0])
+        
 
     def loadGroups(self):
         """Will load database data into self.groupManager"""
         """Precondition: There is data to be loaded
         Postcondition: Data should be loaded from database into program"""
         loadgroups = ("SELECT * FROM usergroups")
+        loadmembers = ("SELECT * FROM groupmem")
+        loadnotes = ("SELECT * FROM groupcon")
         self.cursor.execute(loadgroups)
         load = self.cursor.fetchall()
+        self.cursor.execute(loadmembers)
+        load2 = self.cursor.fetchall()
+        self.cursor.execute(loadnotes)
+        load3 = self.cursor.fetchall()
         for group in load:
             if type(group[0]) is not int:
                 group[0] = int(group[0])
@@ -252,6 +276,19 @@ class DatabaseManager(object):
             if type(group[3]) is not int:
                 group[3] = int(group[3])
             self.groupManager.addGroup(group[0], group[1], group[2], group[3])
+        for group in self.groupManager.groupList:
+            for user in load2:
+                if user[1] == group.getId():
+                    if type(user[0]) is not int:
+                        user[0] = int(user[0])
+                    group.addUser(user[0])
+            group.fillOldMembers()
+            for note in load3:
+                if note[0] == group.getId():
+                    if type(note[1]) is not int:
+                        note[1] = int(note[1])
+                    group.addNote(note[1])
+            group.fillOldNotes()
     
     def saveDatabase(self):
         """Saves and updates the database"""
@@ -289,20 +326,19 @@ class DatabaseManager(object):
                      "(user_id, username, password)"
                      "VALUES (%s, %s, %s)")
         if user.getNew() == True:
-            self.cursor.execute(add_newuser, (user.id, user.username, user.password))
+            self.cursor.execute(add_newuser, (user.getId(), user.getUsername(), user.getPassword()))
         elif user.getMark() == True:
-            ident = (user.id, )
+            ident = (user.getId(), )
             self.cursor.execute(delete_user, ident)
             self.cursor.execute(delete_usergroup, ident)
             self.cursor.execute(delete_usernote, ident)
             self.cursor.execute(delete_usergrouping, ident)
             self.cursor.execute(delete_usernotes, ident)
         elif user.getUpdate() == True:
-            self.cursor.execute(modify_pass, (user.password, user.id))
-            self.cursor.execute(modify_user, (user.username, user.id))
+            self.cursor.execute(modify_pass, (user.password, user.getId()))
+            self.cursor.execute(modify_user, (user.username, user.getId()))
         
     def saveNotes(self, note):
-        #Not fully implemented yet
         """Precondition: Note ID is not 0. Note ID and User ID are 12 digits long at max. Importance is two digits long at max. Title is 15 characters long at max. Color is 10 characters long at max.
         Postcondition: Note data should be saved to the database"""
         add_usercon = ("INSERT INTO usercon"
@@ -311,6 +347,7 @@ class DatabaseManager(object):
         delete_note = ("DELETE FROM notes WHERE note_id = %s")
         delete_notegroup=("DELETE FROM groupcon WHERE note_id = %s")
         delete_noteuser=("DELETE FROM usercon WHERE note_id = %s")
+        delete_notecon=("DELETE FROM usercon WHERE note_id = %s AND user_id = %s")
         delete_notetag=("DELETE FROM tags WHERE note_id = %s")
         remove_tag = ("DELETE FROM tags WHERE tag_id = %s AND note_id = %s")
         add_tag = ("INSERT INTO tags"
@@ -329,24 +366,53 @@ class DatabaseManager(object):
                         "(user_id, note_id)"
                         "VALUES (%s, %s)")
         if note.getNew() == True:
-            self.cursor.execute(add_note, note.id, note.owner, note.dateMade, note.lastModified, note.text, note.eventDate, note.importance, note.title, note.color, note.repeating)
-            self.cursor.execute(add_usercon, note.id, note.owner)
+            self.cursor.execute(add_note, note.getId(), note.getOwner(), note.getDateMade(), note.getModified(), note.getText(), note.getEvent(), note.getImportance(), note.getTitle(), note.getColor(), note.getRepeating())
+            self.cursor.execute(add_usercon, note.getId(), note.getOwner())
         elif note.getMark() == True:
-            ident = (note.id, )
+            ident = (note.getId(), )
             self.cursor.execute(delete_note, ident)
             self.cursor.execute(delete_notegroup, ident)
             self.cursor.execute(delete_noteuser, ident)
             self.cursor.execute(delete_notetag, ident)
         elif note.getUpdate() == True:
-            #self.cursor.execute(add_usercon, shareuser, note.id) More work needed
-            #self.cursor.execute(remove_tag, oldtag[0], note.id) Conditions needed
-            #for tag in note.tags:
-             #   self.cursor.execute(add_tag, newtag, tag, note.id)
-            self.cursor.execute(update_notedata, note.text, note.id)
-            self.cursor.execute(update_notedate, note.lastModified, note.id)
+            tags = note.getTags()
+            oldtags = note.getOldTags()
+            for tag in tags:
+                count = 0
+                for oldtag in oldtags:
+                    if tag == oldtag:
+                        count += 1
+                if count == 0:
+                    self.cursor.execute(add_tag, tag[0], tag[1], note.getId())
+            
+            for oldtag in oldtags:
+                count = 0
+                for tag in tags:
+                    if oldtag == tag:
+                        count += 1
+                if count == 0:
+                    self.cursor.execute(remove_tag, oldtag[0], note.getId())
+            
+            for shareuser in note.getVisibility():
+                count = 0
+                for olduser in note.getOldVisibility():
+                    if shareuser == olduser:
+                        count += 1
+                if count == 0:    
+                    self.cursor.execute(add_usercon, shareuser, note.getId())
+            
+            for olduser in note.getOldVisibility():
+                count = 0
+                for shareuser in note.getVisibility():
+                    if olduser == shareuser:
+                        count += 1
+                if count == 0:
+                    conident = (note.getId(), olduser)
+                    self.cursor.execute(delete_notecon, conident)
+            self.cursor.execute(update_notedata, note.getText(), note.getId())
+            self.cursor.execute(update_notedate, note.getModified(), note.getId())
         
     def saveGroups(self, group):
-        #Not fully implemented yet
         """Precondition: Group ID is not 0. Group ID and User ID are 12 digits long at max. Name is 30 characters long at max. Description is 180 characters long at max.
         Postcondition: Group data should be saved to the database"""
         new_group = ("INSERT INTO usergroups"
@@ -360,33 +426,70 @@ class DatabaseManager(object):
                         "VALUES (%s, %s)")
         delete_group = ("DELETE FROM usergroups WHERE group_id = %s")
         delete_groupmem=("DELETE FROM groupmem WHERE group_id = %s")
-        delete_groupnote=("DELETE FROM groupcon WHERE group_id = %s")
+        delete_groupnote=("DELETE FROM groupcon WHERE group_id = %s AND note_id = %s")
+        delete_groupnotes=("DELETE FROM groupcon WHERE group_id = %s")
         modify_privacy = ("UPDATE usergroups "
                        "SET privacy = %s "
                        "WHERE group_id = %s")
         modify_name = ("UPDATE usergroups "
                        "SET name = %s "
                        "WHERE group_id = %s")
-        remove_user=("DELETE FROM groupmem WHERE user_id = %s")
+        remove_user=("DELETE FROM groupmem WHERE user_id = %s AND group_id = %s")
         modify_desc = ("UPDATE usergroups "
                        "SET description = %s "
                        "WHERE group_id = %s")
         if group.getNew() == True:
-            self.cursor.execute(new_group, group.id, group.name, group.description, group.owner, group.isPrivate)
-            for member in group.members:
-                self.cursor.execute(add_groupmem, group.id, member)
+            self.cursor.execute(new_group, group.getId(), group.getName(), group.getDescription(), group.getOwner(), group.getPrivacy())
+            for member in group.getMembers():
+                self.cursor.execute(add_groupmem, group.getId(), member)
         elif group.getMark() == True:
-            ident = (group.id, )
+            ident = (group.getId, )
             self.cursor.execute(delete_group, ident)
             self.cursor.execute(delete_groupmem, ident)
-            self.cursor.execute(delete_groupnote, ident)
+            self.cursor.execute(delete_groupnotes, ident)
         elif group.getUpdate() == True:
-            #self.cursor.execute(add_groupmem, group.id, self.id)
-            #self.cursor.execute(add_groupcon, groupid, noteid)
-            self.cursor.execute(modify_desc, group.desc, group.id)
-            #self.cursor.execute(remove_user, memind)
-            self.cursor.execute(modify_name, group.name, group.id)
-            self.cursor.execute(modify_privacy, group.isPrivate, group.id)
+            self.cursor.execute(modify_desc, group.getDescription(), group.getId())
+            self.cursor.execute(modify_name, group.getName(), group.getId())
+            self.cursor.execute(modify_privacy, group.getPrivacy(), group.getId())
+            oldmembers = group.getOldMembers()
+            members = group.getMembers()
+            for member in members:
+                count = 0
+                for oldmember in oldmembers:
+                    if member == oldmember:
+                        count += 1
+                if count == 0:
+                    self.cursor.execute(add_groupmem, group.getId(), member)
+                    
+            for oldmember in oldmembers:
+                count = 0
+                for member in members:
+                    if oldmember == member:
+                        count += 1
+                if count == 0:
+                    memident = (oldmember, group.getId())
+                    self.cursor.execute(remove_user, memident)
+                    
+            notes = group.getNotes()
+            oldnotes = group.getOldNotes()
+            
+            for note in notes:
+                count = 0
+                for oldnote in oldnotes:
+                    if note == oldnote:
+                        count += 1
+                if count == 0:
+                    self.cursor.execute(add_groupcon, group.getId(), note)
+                    
+            for oldnote in oldnotes:
+                count = 0
+                for note in notes:
+                    if oldnote == note:
+                        count += 1
+                if count == 0:
+                    noteident = (group.getId(), oldnote)
+                    self.cursor.execute(delete_groupnote, noteident)               
+            
 
 class UserManager(object):
     def __init__(self):
@@ -742,22 +845,36 @@ class DataObjects(object):
         self.mark = False
         self.new = False
         
-    def getUpdate(self):
+    def getId(self) -> int:
+        """Returns self.id, an Integer representing a unique UserID"""
+        return self.id
+        
+    def getUpdate(self) -> bool:
+        """Returns whether the object needs to be updated in the database or not"""
         return self.update
         
-    def getMark(self):
+    def getMark(self) -> bool:
+        """Returns whether the object needs to be deleted in the database or not"""
         return self.mark
         
-    def getNew(self):
+    def getNew(self) -> bool:
+        """Returns whether the object needs to have a new entry made for it in the database"""
         return self.new
     
+    def setId(self, nId: int):
+        """Changes the id value"""
+        self.id = nId
+    
     def setUpdate(self, change: bool):
+        """Changes the update value"""
         self.update = change
         
-    def setMark(self):
+    def setMark(self: bool):
+        """Changes the mark value to true since user has to go through a confirmation process before they want something deleted"""
         self.mark = True
         
     def setNew(self, change: bool):
+        """Changes the new value"""
         self.new = change
 
 
@@ -778,30 +895,128 @@ class Note(DataObjects):
         self.color = _color
         self.repeating = _repeating
         self.tags = []
+        self.oldTags = []
         self.visibleBy = []
+        self.oldVisibility = []
 
-    def edit(self, entertext):
+    def edit(self, entertext: str):
         """Currently only allows adding to text, will eventually allow for full editing of text"""
         self.text = entertext
         
-    def delete(self):
-        #TODO evaluate usefulness
-        """delete the note"""
-        pass
-        
-    def share(self, shareuser):
+    def share(self, shareuser: int):
         """share note with other users"""
-        self.vis.append(shareuser)
+        self.visibleBy.append(shareuser)
         
-    def toggleNewNote(self):
-        #TODO evaluate usefulness
-        "Changes new from false to True"
-        self.new = True
+    def addTag(self, newtag):
+        """Adds a tag to the note"""
+        count = 0
+        for tag in self.tags:
+            if tag == newtag:
+                count += 1
+        if count == 0:
+            self.tags.append(newtag)
+            
+    def fillOldTags(self):
+        """Fill the old tag list for when saving occurs"""
+        for tag in self.tags:
+            self.oldTags.append(tag)
+            
+    def fillOldUsers(self):
+        """Fill the old user list for when saving occurs"""
+        for user in self.visibleBy:
+            self.oldVisibility.append(user)
+            
+    def getOldVisibility(self):
+        """Return the list of old users that can see the note"""
+        return self.oldVisibility
+    
+    def getOldTags(self):
+        """Return the list of old tags that are on the note"""
+        return self.OldTags
         
-    def deleteNote(self):
-        #TODO evaluate usefulness
-        "Marks the note for deletion"
-        self.mark = True
+    def getOwner(self):
+        """Return the owner of the note"""
+        return self.owner
+    
+    def getDateMade(self):
+        """Return the date the note was made"""
+        return self.dateMade
+    
+    def getModified(self):
+        """Return the date the note was last modified"""
+        return self.lastModified
+    
+    def getText(self):
+        """Return the text of the note"""
+        return self.text
+    
+    def getEvent(self):
+        """Return the date of the event if there is one"""
+        return self.eventDate
+    
+    def getImportance(self):
+        """Return the importance value of the note if there is one"""
+        return self.importance
+    
+    def getTitle(self):
+        """Return the title of the note if there is one"""
+        return self.title
+    
+    def getColor(self):
+        """Return the color of the note if there is one"""
+        return self.color
+    
+    def getRepeating(self):
+        """Return if the note event repeats or not"""
+        return self.repeating
+    
+    def getTags(self):
+        """Return the list of tags on the note"""
+        return self.tags
+    
+    def getVisibility(self):
+        """Return the list of people who can see the note"""
+        return self.visibleBy
+    
+    def setOwner(self, nOwner):
+        """Change the owner"""
+        self.owner = nOwner
+    
+    def setDateMade(self, nDate):
+        """Change the date the note was made, this should never be executed in actual practice"""
+        self.dateMade = nDate
+    
+    def setModified(self, nModified):
+        """Updates the date the note was modified on"""
+        self.lastModified = nModified
+    
+    def setEvent(self, nEvent):
+        """Set the date of the event"""
+        self.eventDate = nEvent
+    
+    def setImportance(self, nImportance):
+        """Set the importance value of the note"""
+        self.importance = nImportance
+    
+    def setTitle(self, nTitle):
+        """Set the title of the note"""
+        self.title = nTitle
+    
+    def setColor(self, nColor):
+        """Set the color of the note"""
+        self.color = nColor
+    
+    def setRepeating(self, nRepeating):
+        """Set if the note event is repeating or not"""
+        self.repeating = nRepeating
+    
+    def setTags(self, nTags):
+        """Set the tags list"""
+        self.tags = nTags
+    
+    def setVisibility(self, nVisibility):
+        """Set the list of users who can see the note"""
+        self.visibleBy = nVisibility
 
 
 class User(DataObjects):
@@ -814,10 +1029,6 @@ class User(DataObjects):
         self.password = _password
         self.groups = []
         self.notes = []
-
-    def getId(self) -> int:
-        """Returns self.id, an Integer representing a unique UserID"""
-        return self.id
 
     def getUsername(self) -> str:
         """Returns username, a string identifier for the user object"""
@@ -832,15 +1043,16 @@ class User(DataObjects):
         return self.notes
 
     def getPassword(self) -> str:
+        """Returns the password"""
         return self.password
+    
+    def setGroups(self, nGroups):
+        """Sets the list of groups"""
+        self.groups = nGroups
 
-    def checkPassword(self, attempt: str) -> bool:
-        #TODO evaluate usefulness
-        """Returns True if password attempt is correct and False otherwise"""
-        if attempt == self.password:
-            return True
-        else:
-            return False
+    def setNotes(self, nNotes):
+        """Sets the list of notes"""
+        self.notes = nNotes
         
     def changePassword(self, oldPassword: str, newPassword: str):
         """Changes password if the old password is correct"""
@@ -866,17 +1078,6 @@ class User(DataObjects):
     def removeNote(self, note):
         """removes note from note list"""
         self.notes.remove(note)
-        
-    def toggleNewUser(self):
-        #TODO evaluate usefulness
-        "Changes new from false to True"
-        self.new = True
-        
-    def deleteUser(self):
-        #TODO evaluate usefulness
-        "Marks the user for deletion"
-        self.mark = True
-
 
 class Group(DataObjects):
     def __init__(self, _id, _groupname, _desc, _own):
@@ -888,18 +1089,30 @@ class Group(DataObjects):
         self.owner = _own
         self.isPrivate = True
         self.members = [_own]
+        self.oldMembers = []
+        self.notes = []
+        self.oldNotes = []
         
     def addUser(self, newuser):
+        """Adds a user to the list of users in the group"""
         self.members.append(newuser)
         
     def editDesc(self, newdesc):
+        """Edits the description of the group"""
         self.description = newdesc
         
     def remUser(self, memind):
+        """Removes a user from the group"""
         self.members.remove(memind)
         
     def editName(self, newname):
+        """Edits the name of the group"""
         self.name = newname
+        
+    def fillOldMembers(self):
+        """Fills the Old Members list for when saving occurs"""
+        for member in self.members:
+            self.oldMembers.append(member)
         
     def togglePrivacy(self):
         """Change the privacy setting of the group"""
@@ -908,15 +1121,50 @@ class Group(DataObjects):
         else:
             self.isPrivate == True
             
-    def toggleNewUser(self):
-        #TODO evaluate usefulness
-        "Changes new from false to True"
-        self.new = True
+    def addNote(self, note):
+        """Adds notes to the group note list"""
+        self.notes.append(note)
         
-    def deleteGroup(self):
-        #TODO evaluate usefulness
-        "Marks the group for deletion"
-        self.mark = True
+    def fillOldNotes(self):
+        """Fills the Old Notes list for when saving occurs"""
+        for note in self.notes:
+            self.oldNotes.append(note)
+            
+    def getOldNotes(self):
+        """Return the list of old notes"""
+        return self.oldNotes
+    
+    def getOldMembers(self):
+        """Return the list of old members"""
+        return self.oldMembers
+            
+    def getName(self):
+        """Return the name of the group"""
+        return self.name
+    
+    def getDescription(self):
+        """Return the description of the group"""
+        return self.description
+    
+    def getOwner(self):
+        """Return the owner of the group"""
+        return self.owner
+    
+    def getPrivacy(self):
+        """Return the privacy of the group"""
+        return self.isPrivate
+    
+    def getMembers(self):
+        """Return the list of members of the group"""
+        return self.members
+    
+    def setOwner(self, nOwner):
+        """Changes the owner of the group"""
+        self.owner = nOwner
+    
+    def setMembers(self, nMembers):
+        """Changes the member list of the group"""
+        self.members = nMembers
 
 def main():
     dbManager = DatabaseManager()
