@@ -188,7 +188,6 @@ class DatabaseManager(object):
         """Will load user data into self.userManager"""
         """Precondition: There is data to be loaded
         Postcondition: Data should be loaded from database into program"""
-        self.cursor.fetchall()
         loadusers = ("SELECT * FROM users")
         self.cursor.execute(loadusers)
         load = self.cursor.fetchall()
@@ -981,10 +980,6 @@ class Note(DataObjects):
     def setOwner(self, nOwner):
         """Change the owner"""
         self.owner = nOwner
-    
-    def setDateMade(self, nDate):
-        """Change the date the note was made, this should never be executed in actual practice"""
-        self.dateMade = nDate
     
     def setModified(self, nModified):
         """Updates the date the note was modified on"""
