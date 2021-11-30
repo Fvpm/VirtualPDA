@@ -699,7 +699,7 @@ class LoginGUI(AbstractGUI):
         registerButton.pack()
         loginButton = Button(buttonFrame, text = "Login", command = self.login)
         loginButton.pack()
-        guestButton = Button(buttonFrame, text = "Guest", command = self.guestLogin)
+        guestButton = Button(buttonFrame, text = "Guest", command = None)
         guestButton.pack()
 
         userNameFrame = Frame(entryFrame)
