@@ -394,14 +394,28 @@ class UserManager(object):
         self.currentUser = None
         self.nextId = 1
     def setManagers(self, _databaseManager, _groupManager, _noteManager, _guiManager):
-        """Because Managers have to be made all at once and reference each other, this function is called when this object is created on startup but after all managers are initalized"""
+        """Sets the manager attributes of UserManager object.
+           The UserManager object must have its managers set after creation.. After all managers are made, setManagers should be called to finish initializing managers
+           This is a utility function called in DatabaseManager.startup()
+
+           _databaseManager DatabaseManager : The database controller object
+           _groupManager    GroupManager    : The group controller object
+           _noteManager     NoteManager     : The note controller object
+           _guiManager      GUIManager      : The GUI controller object
+        """
         self.databaseManager = _databaseManager
         self.userManager = _groupManager
         self.noteManager = _noteManager
         self.guiManager = _guiManager
 
-    def login(self, username, password):
-        """Searches for user with username and checks validity of password. Returns True if success and False if any type of failure (username not found / password invalid)"""
+    def login(self, username: str, password: str) -> bool:
+        """Checks if username and password match a record, and logs in if successful
+
+        username   str : Username to check records for
+        password   str : Password to check match for
+
+        Returns True if login is successful, and False if no record matches
+        """
         for user in self.userList:
             if username == user.getUsername() and password == user.getPassword():
                 currentUser = user
@@ -409,15 +423,40 @@ class UserManager(object):
         return False
 
     def newUser(self, username, password):
+        """Creates a new user entry. Automatically fills in the next available ID
+
+        username str : Username to create new user with. Must be 16 characters or less.
+        password str : Password to create new password with. Must be 16 characters or less.
+
+        Returns newly created user object
+        """
         user = self.addUser(self.nextId, password, username)
         user.setNew(True)
+        return user
+
     def addUser(self, userId, password, username):
+        """Inserts a user entry of the given ID to user list. 
+
+        userId   int : primary ID of user. Must be a positive integer.
+        password str : password of user. Must be 16 characters or less.
+        username str : username of user. Must be 16 characters or less.
+
+        returns User object
+        """
         if(userId >= self.nextId):
             self.nextId = userId + 1
         newUser = User(userId, username, password)
         self.userList.append(newUser)
         return newUser
+
     def userJoinGroup(self, user, group):
+        """Takes a user and a group and adds the user to the group. Returns None.
+
+        user  User : user object to add to group
+        group Group: group object to add user to
+
+        returns None.
+        """
         if group not in user.getGroups():
             user.addGroup(group)
         if user not in group.getMembers():
@@ -509,8 +548,12 @@ class GUIManager(object):
 
 
 class AbstractGUI(object):
-    """Parent class of all main GUI windows. Does not include popups"""
+    """Parent class of all main GUI windows"""
     def __init__(self, managerList, parent):
+        """
+        managerList : List containing a UserManager, NoteManager, GroupManager, and GUIManager in that order
+        parent : parent tkinter window
+        """
         self.userManager = managerList[0]
         self.noteManager = managerList[1]
         self.groupManager = managerList[2]
@@ -521,15 +564,18 @@ class AbstractGUI(object):
         self.window.protocol("WM_DELETE_WINDOW",self.onClose)
 
     def show(self):
-        """Makes window re-appear if invisible. Does nothing if visible"""
+        """Makes window re-appear if invisible. Does nothing if visible. 
+        Takes no input and returns None."""
         self.window.deiconify()
 
     def hide(self):
-        """Makes window disppear if visible. Does not destroy window or data within it, just visually removes it from the screen"""
+        """Makes window disppear if visible. Does not destroy window or data within it, just visually removes it from the screen. 
+        Takes no input and returns None."""
         self.window.withdraw()
 
     def onClose(self):
-        """Closing any window using the system's red X will close the program. This is a helper function for the event handler set up in __init__ in order to do so."""
+        """Closing any window using the system's red X will close the program. This is a helper function for the event handler set up in __init__ in order to do so.
+        Takes no input and returns none"""
         self.guiManager.end()
         self.databaseManager.saveDatabase()
 
@@ -570,11 +616,14 @@ class LoginGUI(AbstractGUI):
         
 
     def openRegisterWindow(self):
-        """Opens the register window, which will set loginGUI to invisible"""
+        """Opens the register window, which will set loginGUI (this object) to invisible
+        Takes no input and returns None"""
         self.guiManager.openWindow("register")
 
     def login(self):
-        """Sends a login request to userManager. Logs user in and brings them to home if success, displays a popup if unsuccessful"""
+        """Sends a login request to userManager. Logs user in and brings them to home if success, displays a popup if unsuccessful.
+        Grabs username and password from entry fields.
+        Takes no input and returns None"""
         userName = self.userNameEntry.get()
         password = self.passwordEntry.get()
         success = self.userManager.login(userName,password)
@@ -584,11 +633,6 @@ class LoginGUI(AbstractGUI):
             self.guiManager.openWindow("home")
         else:
             self.guiManager.popup("Incorrect Username and Password")
-
-    def guestLogin(self):
-        
-        pass
-
 
 class RegisterGUI(AbstractGUI):
     def __init__(self, managerList, parent):
@@ -617,6 +661,9 @@ class RegisterGUI(AbstractGUI):
         registerButton.pack()
 
     def newUser(self):
+        """Runs when users click button labeled "Register". Creates a new user entry and reopens login window.
+        Grabs username and password from entry fields
+        Takes no input and returns none."""
         #TODO confirm password
         username = self.usernameEntry.get()
         password = self.passwordEntry.get()
@@ -624,7 +671,10 @@ class RegisterGUI(AbstractGUI):
         self.backToLogin()
 
     def backToLogin(self):
+        """Hides this window and opens the login window.
+        Takes no input and returns None"""
         self.guiManager.openWindow("login")
+        #TODO clear entries
 
 class HomeGUI(AbstractGUI):
     def __init__(self, managerList, parent):
