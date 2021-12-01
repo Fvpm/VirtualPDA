@@ -597,6 +597,7 @@ class NoteManager(object):
         self.groupManager = _groupManager
         self.guiManager = _guiManager
     def addNote(self, noteId, owner, dateMade, lastModified, text, eventDate, importance, title, color, repeating):
+        """Adds a note to the note list so it can be kept track of"""
         newNote = Note(noteId, owner, dateMade, lastModified, text, eventDate, importance, title, color, repeating)
         self.noteList.append(newNote)
 
@@ -611,8 +612,10 @@ class GroupManager(object):
         self.noteManager = _noteManager
         self.guiManager = _guiManager
     def userJoinGroup(self, user, group):
+        """Adds a user to a group"""
         self.userManager.userJoinGroup(user,group)
     def addGroup(self, groupId, groupname, description, owner):
+        "Adds a group to the group list so it can be kept track of"
         newGroup = Group(groupId, groupname, description, owner)
         self.groupList.append(newGroup)
 
