@@ -566,15 +566,39 @@ class UserManager(object):
             
 
 class NoteManager(object):
+
     def __init__(self):
         self.noteList = []
+
     def setManagers(self, _databaseManager, _userManager, _groupManager, _guiManager):
-        """Because Managers have to be made all at once and reference each other, this function is called when this object is created on startup but after all managers are initalized"""
+        """Sets the manager attributes of NoteManager object. This must be executed before further use of NoteManager.
+           This is a utility function called in DatabaseManager.startup()
+
+           _databaseManager DatabaseManager : The database controller object
+           _userManager     UserManager     : The user controller object
+           _noteManager     NoteManager     : The note controller object
+           _guiManager      GUIManager      : The GUI controller object
+        """
+
         self.databaseManager = _databaseManager
         self.userManager = _userManager
         self.groupManager = _groupManager
         self.guiManager = _guiManager
+
     def addNote(self, noteId, owner, dateMade, lastModified, text, eventDate, importance, title, color, repeating):
+        """Creates a new note object and adds it to the list of notes
+
+        _noteId int
+        owner str
+        dateMade str
+        lastModified str
+        text str
+        eventDate str
+        important str
+        title str
+        color str
+        repeating str
+        """
         newNote = Note(noteId, owner, dateMade, lastModified, text, eventDate, importance, title, color, repeating)
         self.noteList.append(newNote)
 
