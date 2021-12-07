@@ -223,6 +223,7 @@ class DatabaseManager(object):
 
             self.noteManager.addNote(note[0], note[1], notedata[0], notedata[1], note[4], note[5], note[6], note[7], note[8], note[9])
         for note in self.noteManager.noteList:
+            #Connect tags with their notes
             for tag in load2:
                 if tag[0] == note.getId():
                     if type(tag[0]) is not int:
@@ -231,6 +232,7 @@ class DatabaseManager(object):
                         tag[1] = str(tag[1])
                     note.addTag((tag[0], tag[1]))
             note.fillOldTags()
+            #Connect notes with users that can see them
             for con in load3:
                 if con[1] == note.getId():
                     if type(con[0]) is not int:
@@ -261,6 +263,7 @@ class DatabaseManager(object):
             if type(group[3]) is not int:
                 group[3] = int(group[3])
             self.groupManager.addGroup(group[0], group[1], group[2], group[3])
+        #Connect the groups with their members
         for group in self.groupManager.groupList:
             for user in load2:
                 if user[1] == group.getId():
@@ -268,6 +271,7 @@ class DatabaseManager(object):
                         user[0] = int(user[0])
                     group.addUser(user[0])
             group.fillOldMembers()
+            #Connect the groups with their notes
             for note in load3:
                 if note[0] == group.getId():
                     if type(note[1]) is not int:
@@ -279,21 +283,26 @@ class DatabaseManager(object):
         """Saves and updates the database"""
         """Precondition: There is data to be saved
         Postcondition: Data should be loaded from program into the database"""
+        #Cycle through and save all users
         for User in self.userManager.userList:
             self.saveUsers(User)
             User.setNew(False)
             User.setUpdate(False)
+        #Cycle through and save all notes
         for Note in self.noteManager.noteList:
             self.saveNotes(Note)
             Note.setNew(False)
             Note.setUpdate(False)
+        #Cycle through and save all groups
         for Group in self.groupManager.groupList:
             self.saveGroups(Group)
             Group.setNew(False)
             Group.setUpdate(False)
+        #Commit changes made to the database
         self.database.commit()
         
     def saveUsers(self, user):
+        """Saves all data concerning users to the database"""
         """Precondition: User ID is not 0. ID should be 12 digits long at max. Username and Password should be 16 characters long at max.
         Postcondition: User data should be saved to the database"""
         modify_pass = ("UPDATE users "
@@ -311,8 +320,10 @@ class DatabaseManager(object):
                      "(user_id, username, password)"
                      "VALUES (%s, %s, %s)")
         if user.getNew() == True:
+            #If user is new then add them to the database
             self.cursor.execute(add_newuser, (user.getId(), user.getUsername(), user.getPassword()))
         elif user.getMark() == True:
+            #If the user has been marked for deletion then delete all entries in the database related to user
             ident = (user.getId(), )
             self.cursor.execute(delete_user, ident)
             self.cursor.execute(delete_usergroup, ident)
@@ -320,10 +331,12 @@ class DatabaseManager(object):
             self.cursor.execute(delete_usergrouping, ident)
             self.cursor.execute(delete_usernotes, ident)
         elif user.getUpdate() == True:
+            #If the user needs to be updated then update the database as well
             self.cursor.execute(modify_pass, (user.password, user.getId()))
             self.cursor.execute(modify_user, (user.username, user.getId()))
         
     def saveNotes(self, note):
+        """Saves all data concerning notes to the database"""
         """Precondition: Note ID is not 0. Note ID and User ID are 12 digits long at max. Importance is two digits long at max. Title is 15 characters long at max. Color is 10 characters long at max.
         Postcondition: Note data should be saved to the database"""
         add_usercon = ("INSERT INTO usercon"
@@ -357,17 +370,21 @@ class DatabaseManager(object):
                         "(user_id, note_id)"
                         "VALUES (%s, %s)")
         if note.getNew() == True:
+            #if the note is new then add it to the database
             self.cursor.execute(add_note, (note.getId(), note.getOwner(), note.getDateMade(), note.getModified(), note.getText(), note.getEvent(), note.getImportance(), note.getTitle(), note.getColor(), note.getRepeating()))
             self.cursor.execute(add_usercon, (note.getOwner(), note.getId()))
         elif note.getMark() == True:
+            #If the note has been marked for deletion then delete everything having to do with it in database
             ident = (note.getId(), )
             self.cursor.execute(delete_note, ident)
             self.cursor.execute(delete_notegroup, ident)
             self.cursor.execute(delete_noteuser, ident)
             self.cursor.execute(delete_notetag, ident)
         elif note.getUpdate() == True:
+            #If note has been updated then update the database as well
             tags = note.getTags()
             oldtags = note.getOldTags()
+            #Check if tags have been added
             for tag in tags:
                 count = 0
                 for oldtag in oldtags:
@@ -375,7 +392,7 @@ class DatabaseManager(object):
                         count += 1
                 if count == 0:
                     self.cursor.execute(add_tag, tag[0], tag[1], note.getId())
-            
+            #Check if tags have been removed
             for oldtag in oldtags:
                 count = 0
                 for tag in tags:
@@ -383,7 +400,7 @@ class DatabaseManager(object):
                         count += 1
                 if count == 0:
                     self.cursor.execute(remove_tag, oldtag[0], note.getId())
-            
+            #Check if new users are able to view the note
             for shareuser in note.getVisibility():
                 count = 0
                 for olduser in note.getOldVisibility():
@@ -391,7 +408,7 @@ class DatabaseManager(object):
                         count += 1
                 if count == 0:    
                     self.cursor.execute(add_usercon, shareuser, note.getId())
-            
+            #Check if users are no longer able to view the note
             for olduser in note.getOldVisibility():
                 count = 0
                 for shareuser in note.getVisibility():
@@ -406,6 +423,7 @@ class DatabaseManager(object):
             self.cursor.execute(update_noteimportance, (note.getImportance(), note.getId()))
         
     def saveGroups(self, group):
+        """Saves all data concerning groups to the database"""
         """Precondition: Group ID is not 0. Group ID and User ID are 12 digits long at max. Name is 30 characters long at max. Description is 180 characters long at max.
         Postcondition: Group data should be saved to the database"""
         new_group = ("INSERT INTO usergroups"
@@ -432,20 +450,24 @@ class DatabaseManager(object):
                        "SET description = %s "
                        "WHERE group_id = %s")
         if group.getNew() == True:
+            #If the group is new add it to the database
             self.cursor.execute(new_group, group.getId(), group.getName(), group.getDescription(), group.getOwner(), group.getPrivacy())
             for member in group.getMembers():
                 self.cursor.execute(add_groupmem, group.getId(), member)
         elif group.getMark() == True:
+            #If the group is marked for deletion, delete everything related to the group from the database
             ident = (group.getId, )
             self.cursor.execute(delete_group, ident)
             self.cursor.execute(delete_groupmem, ident)
             self.cursor.execute(delete_groupnotes, ident)
         elif group.getUpdate() == True:
+            #If the group is set to be updated then update the information related to it in the database
             self.cursor.execute(modify_desc, group.getDescription(), group.getId())
             self.cursor.execute(modify_name, group.getName(), group.getId())
             self.cursor.execute(modify_privacy, group.getPrivacy(), group.getId())
             oldmembers = group.getOldMembers()
             members = group.getMembers()
+            #Check if new member have been added to the group
             for member in members:
                 count = 0
                 for oldmember in oldmembers:
@@ -453,7 +475,7 @@ class DatabaseManager(object):
                         count += 1
                 if count == 0:
                     self.cursor.execute(add_groupmem, group.getId(), member)
-                    
+            #Check if members have been removed from the group
             for oldmember in oldmembers:
                 count = 0
                 for member in members:
@@ -462,10 +484,10 @@ class DatabaseManager(object):
                 if count == 0:
                     memident = (oldmember, group.getId())
                     self.cursor.execute(remove_user, memident)
-                    
+            
             notes = group.getNotes()
             oldnotes = group.getOldNotes()
-            
+            #Check if notes have been added to the group
             for note in notes:
                 count = 0
                 for oldnote in oldnotes:
@@ -473,7 +495,7 @@ class DatabaseManager(object):
                         count += 1
                 if count == 0:
                     self.cursor.execute(add_groupcon, group.getId(), note)
-                    
+            #Check if notes have been removed from the group
             for oldnote in oldnotes:
                 count = 0
                 for note in notes:
@@ -586,17 +608,29 @@ class NoteManager(object):
            _groupManager    GroupManager    : The group controller object
            _guiManager      GUIManager      : The GUI controller object
         """
+
         self.databaseManager = _databaseManager
         self.userManager = _userManager
         self.groupManager = _groupManager
         self.guiManager = _guiManager
 
     def addNote(self, noteId, owner, dateMade, lastModified, text, eventDate, importance, title, color, repeating):
-        """Creates a new note object and adds it to the note list
 
-        """#TODO
+        """Adds a note to the note list so it can be kept track of
+        _noteId int
+        owner str
+        dateMade str
+        lastModified str
+        text str
+        eventDate str
+        important str
+        title str
+        color str
+        repeating str
+        """
         if noteId >= self.nextId:
             self.nextId = noteId + 1
+
         newNote = Note(noteId, owner, dateMade, lastModified, text, eventDate, importance, title, color, repeating)
         self.noteList.append(newNote)
 
@@ -635,8 +669,10 @@ class GroupManager(object):
         self.noteManager = _noteManager
         self.guiManager = _guiManager
     def userJoinGroup(self, user, group):
+        """Adds a user to a group"""
         self.userManager.userJoinGroup(user,group)
     def addGroup(self, groupId, groupname, description, owner):
+        "Adds a group to the group list so it can be kept track of"
         newGroup = Group(groupId, groupname, description, owner)
         self.groupList.append(newGroup)
 
