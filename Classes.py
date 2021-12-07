@@ -7,8 +7,6 @@ import datetime
 
 #Managers (controllers)
 
-
-
 class DatabaseManager(object):
     def __init__(self):
         """Initialize connection to mySQL database. Prompts user for username and password to connect to "localhost" mysql server. Saves this username and password to the machine's keychain so that it only asks on first run."""
@@ -120,12 +118,12 @@ class DatabaseManager(object):
             "CREATE TABLE `notes` ("
             " `note_id` int(12) NOT NULL AUTO_INCREMENT,"
             " `user_id` int(12),"
-            " `date_made` date,"
-            " `lastmod` date,"
+            " `date_made` datetime,"
+            " `lastmod` datetime,"
             " `notedata` longtext,"
-            " `date` date,"
+            " `date` datetime,"
             " `import` int(2),"
-            " `title` varchar(15),"
+            " `title` varchar(32),"
             " `color` varchar(10),"
             " `repeating` boolean,"
             " PRIMARY KEY(`note_id`),"
@@ -215,27 +213,15 @@ class DatabaseManager(object):
         self.cursor.execute(loadcon)
         load3 = self.cursor.fetchall()
         for note in load:
-            if type(note[0]) is not int:
-                note[0] = int(note[0])
-            if type(note[1]) is not int:
-                note[1] = int(note[1])
-            if type(note[2]) is not str:
-                note[2] = str(note[2])
-            if type(note[3]) is not str:
-                note[3] = str(note[3])
-            if type(note[4]) is not str:
-                note[4] = str(note[4])
-            if type(note[5]) is not str:
-                note[5] = str(note[5])
-            if type(note[6]) is not int:
-                note[6] = int(note[6])
-            if type(note[7]) is not str:
-                note[7] = str(note[7])
-            if type(note[8]) is not str:
-                note[8] = str(note[8])
-            if type(note[9]) is not str:
-                note[9] = str(note[9])
-            self.noteManager.addNote(note[0], note[1], note[2], note[3], note[4], note[5], note[6], note[7], note[8], note[9])
+            notedata = []
+            notedata.append(note[2].strftime("%Y-%m-%d %h:%m:%s"))
+            notedata.append(note[3].strftime("%Y-%m-%d %h:%m:%s"))
+            if note[5] is not None:
+                notedata.append(note[5].strftime("%Y-%m-%d %h:%m:%s"))
+            else:
+                notedata.append(None)
+
+            self.noteManager.addNote(note[0], note[1], notedata[0], notedata[1], note[4], note[5], note[6], note[7], note[8], note[9])
         for note in self.noteManager.noteList:
             for tag in load2:
                 if tag[0] == note.getId():
@@ -365,8 +351,9 @@ class DatabaseManager(object):
                         "(user_id, note_id)"
                         "VALUES (%s, %s)")
         if note.getNew() == True:
-            self.cursor.execute(add_note, note.getId(), note.getOwner(), note.getDateMade(), note.getModified(), note.getText(), note.getEvent(), note.getImportance(), note.getTitle(), note.getColor(), note.getRepeating())
-            self.cursor.execute(add_usercon, note.getId(), note.getOwner())
+            self.cursor.execute(add_note, (note.getId(), note.getOwner(), note.getDateMade(), note.getModified(), note.getText(), note.getEvent(), note.getImportance(), note.getTitle(), note.getColor(), note.getRepeating()))
+            print(str(note.getOwner()) + "355")
+            self.cursor.execute(add_usercon, (note.getOwner(), note.getId()))
         elif note.getMark() == True:
             ident = (note.getId(), )
             self.cursor.execute(delete_note, ident)
@@ -491,10 +478,13 @@ class DatabaseManager(object):
             
 
 class UserManager(object):
+
     def __init__(self):
+        """Initializes UserManager object. Doesn't need any input, but setManagers() should be run before other functions."""
         self.userList = []
         self.currentUser = None
         self.nextId = 1
+
     def setManagers(self, _databaseManager, _groupManager, _noteManager, _guiManager):
         """Sets the manager attributes of UserManager object.
            The UserManager object must have its managers set after creation.. After all managers are made, setManagers should be called to finish initializing managers
@@ -516,11 +506,11 @@ class UserManager(object):
         username   str : Username to check records for
         password   str : Password to check match for
 
-        Returns True if login is successful, and False if no record matches
+        Returns bool True if login is successful, and False if no record matches
         """
         for user in self.userList:
             if username == user.getUsername() and password == user.getPassword():
-                currentUser = user
+                self.currentUser = user
                 return True
         return False
 
@@ -532,11 +522,11 @@ class UserManager(object):
 
         Returns newly created user object
         """
-        user = self.addUser(self.nextId, password, username)
+        user = self.addUser(self.nextId, username, password)
         user.setNew(True)
         return user
 
-    def addUser(self, userId, password, username):
+    def addUser(self, userId, username, password):
         """Inserts a user entry of the given ID to user list. 
 
         userId   int : primary ID of user. Must be a positive integer.
@@ -563,20 +553,66 @@ class UserManager(object):
             user.addGroup(group)
         if user not in group.getMembers():
             group.addMember(group)
+
+    def getCurrentUser(self):
+        """Returns the current user attribute
+
+        returns user object"""
+        return self.currentUser
             
 
 class NoteManager(object):
+
     def __init__(self):
         self.noteList = []
+        self.nextId = 1
+
     def setManagers(self, _databaseManager, _userManager, _groupManager, _guiManager):
-        """Because Managers have to be made all at once and reference each other, this function is called when this object is created on startup but after all managers are initalized"""
+        """This is a utility function called in DatabaseManager that links this controller to all the others.
+           It must be called before using other functions.
+
+           _databaseManager DatabaseManager : The database controller object
+           _userManager     UserManager     : The user controller object
+           _groupManager    GroupManager    : The group controller object
+           _guiManager      GUIManager      : The GUI controller object
+        """
         self.databaseManager = _databaseManager
         self.userManager = _userManager
         self.groupManager = _groupManager
         self.guiManager = _guiManager
+
     def addNote(self, noteId, owner, dateMade, lastModified, text, eventDate, importance, title, color, repeating):
+        """Creates a new note object and adds it to the note list
+
+        """#TODO
+        if noteId >= self.nextId:
+            self.nextId = noteId + 1
         newNote = Note(noteId, owner, dateMade, lastModified, text, eventDate, importance, title, color, repeating)
         self.noteList.append(newNote)
+
+    def generateNewNote(self):
+
+        currentUser = self.userManager.getCurrentUser()
+        ownerId = currentUser.getId()
+        dateMade = datetime.datetime.now().strftime("%Y-%d-%m %H:%M:%S")
+        
+        newNote = Note(self.nextId, ownerId, dateMade, dateMade, "", None, 0, "", "", False)
+        newNote.setNew(True)
+        self.nextId += 1
+        self.noteList.append(newNote)
+        return newNote
+        
+
+    def getNotes(self):
+        """ This function gets a list of notes pertaining to the current user
+
+        """
+        userNotes = []
+        currentUser = self.userManager.getCurrentUser()
+        for note in self.noteList:
+            if note.getOwner() == currentUser.getId():
+                userNotes.append(note)
+        return userNotes
 
 
 class GroupManager(object):
@@ -615,6 +651,7 @@ class GUIManager(object):
         self.guiDict["login"] = LoginGUI(self.managerList, self.root)
         self.guiDict["register"] = RegisterGUI(self.managerList, self.root)
         self.guiDict["home"] = HomeGUI(self.managerList, self.root)
+        self.guiDict["twoPane"] = TwoPaneGUI(self.managerList, self.root)
 
         self.openWindow("login")
 
@@ -730,7 +767,6 @@ class LoginGUI(AbstractGUI):
         password = self.passwordEntry.get()
         success = self.userManager.login(userName,password)
         print(success)
-        print("580")
         if success:
             self.guiManager.openWindow("home")
         else:
@@ -786,23 +822,11 @@ class HomeGUI(AbstractGUI):
         backButton = Button(self.window, text = "<-", command = self.backToLogin)
         backButton.pack(side = TOP, anchor = "nw")
 
-        self.menubar = Menu(self.window)
-        self.emptyMenubar = Menu(self.window)
+        twoPaneViewButton = Button(self.window, text = "two pane view", command = self.openTwoPane)
+        twoPaneViewButton.pack()
 
-        userMenu = Menu(self.menubar, tearoff=0)
-        userMenu.add_command(label="Logout", command=None)
-        userMenu.add_command(label="Change Password", command = None)
-        userMenu.add_command(label="Groups",command = None)
-        self.menubar.add_cascade(label="User", menu=userMenu)
-
-        memoMenu = Menu(self.menubar, tearoff=0)
-        memoMenu.add_command(label="New", command=None)
-        memoMenu.add_command(label="Search", command=None)
-        memoMenu.add_command(label="Delete", command=None)
-        memoMenu.add_command(label="Share", command=None)
-        self.menubar.add_cascade(label="Memo", menu=memoMenu)
-
-        self.window.config(menu=self.menubar)
+    def openTwoPane(self):
+        self.guiManager.openWindow("twoPane")
 
     def show(self):
         super().show()
@@ -829,6 +853,197 @@ class HomeGUI(AbstractGUI):
 
     def openPasswordChangeWindow(self):
         pass
+
+class TwoPaneGUI(AbstractGUI):
+    def __init__(self, managerList, parent):
+        super().__init__(managerList,parent)
+        self.window.geometry("800x600")
+        self.notesList = []
+        self.notesIndex = 0
+        self.currentNote = None
+
+        #outer frames
+        leftFrame = Frame(self.window, bg = "red", width = 400)
+        leftFrame.pack_propagate(False)
+        self.infoFrame = Frame(self.window, bg = "blue", width = 400)
+
+        leftFrame.pack(side = LEFT, fill = BOTH)
+        self.infoFrame.pack(side= RIGHT, fill = BOTH)
+        
+        #left widgets
+        newNotesButton = Button(leftFrame, text = "+", command = self.newNote)
+        self.notesFrame = Frame(leftFrame, bg = "red")
+
+        self.notesFrame.pack(side = TOP, fill = BOTH)
+        newNotesButton.pack(side = BOTTOM, anchor = "sw", fill = X)
+
+        #right widgets
+        titleFrame = Frame(self.infoFrame, width = 400, height = 20)
+        titleFrame.pack_propagate(False)
+        tagFrame = Frame(self.infoFrame, width = 400, height = 20)
+        tagFrame.pack_propagate(False)
+        textBoxFrame = Frame(self.infoFrame, width = 400, height = 500)
+        textBoxFrame.pack_propagate(False)
+        saveButton = Button(self.infoFrame,text = "save", command = self.saveCurrentNote)
+
+        titleFrame.pack(side=TOP)
+        tagFrame.pack(side=TOP)
+        textBoxFrame.pack(side=TOP)
+        saveButton.pack(side=BOTTOM, fill = X)
+
+        #right subwidgets
+        titleLabel = Label(titleFrame, text = "Title:")
+        self.titleEntry = Entry(titleFrame, state = DISABLED)
+        titleLabel.pack(side = LEFT)
+        self.titleEntry.pack(side = LEFT, fill = X, expand = True)
+
+        detailsButton = Button(tagFrame, text = "details", command = self.openNoteDetails)
+        tagsLabel = Label(tagFrame, text = "Tags:")
+        self.tagsEntry = Entry(tagFrame, state = DISABLED)
+        tagsLabel.pack(side = LEFT)
+        self.tagsEntry.pack(side = LEFT, fill = X, expand = True)
+        detailsButton.pack(side = RIGHT)
+
+        self.textBox = Text(textBoxFrame, state = DISABLED)
+        self.textBox.pack(fill = BOTH, expand = True)
+
+    def openNoteDetails(self):
+        return
+
+    def saveCurrentNote(self):
+        self.currentNote.setText(self.textBox.get("1.0", END))
+        self.currentNote.setTitle(self.titleEntry.get())
+        self.currentNote.setTags(self.tagsEntry.get())
+        self.currentNote.setUpdate(True)
+
+        self.updateNotesList()
+
+    def newNote(self):
+        theNewNote = self.noteManager.generateNewNote()
+        self.notesList.insert(0, theNewNote)
+        self.notesIndex = 0
+        self.updateNotesList()
+        self.select0("")
+
+
+    def createNoteFrame(self, parent, note, bindIndex):
+        """returns a tkinter frame object with a note's specifications"""
+        noteTitle = note.getTitle()
+        noteContent = note.getText()
+        noteColor = note.getColor()
+        noteImportance = note.getImportance()
+
+        noteFrame = Frame(parent, bd = 2, relief = GROOVE, width = 400, height = 140)
+        noteFrame.pack_propagate(False)
+        importanceLabel = Label(noteFrame, text=("!" * noteImportance))
+        color = ""
+        if noteColor == "red":
+            noteFrame["bg"] = "#FFAAAA"
+        elif noteColor == "blue":
+            noteFrame["bg"] = "#AAFFAA"
+        elif noteColor == "green":
+            noteFrame["bg"] = "#AAAAFF"
+        elif noteColor == "yellow":
+            noteFrame["bg"] = "#FFFF99"
+        elif noteColor == "purple":
+            noteFrame["bg"] = "#FF99FF"
+
+        contentLabel = Label(noteFrame, text = noteContent)
+        titleLabel = Label(noteFrame)
+        if noteTitle == "":
+            titleLabel["text"] = "Untitled"
+        else:
+            titleLabel["text"] = noteTitle
+
+        if bindIndex == 0:
+            command = self.select0
+        elif bindIndex == 1:
+            command = self.select1
+        elif bindIndex == 2:
+            command = self.select2
+        elif bindIndex == 3:
+            command = self.select3
+        else:
+            print("error in twoPaneGUI.createNoteFrame() incorrect bindIndex range 0<= x <=3")
+        importanceLabel.bind("<Button-1>", command)
+        contentLabel.bind("<Button-1>", command)
+        titleLabel.bind("<Button-1>", command)
+        noteFrame.bind("<Button-1>", command)
+
+        importanceLabel.pack(side = RIGHT)
+        titleLabel.pack(side = TOP)
+        contentLabel.pack(side = BOTTOM)
+        
+        return noteFrame
+
+    def updateNotesList(self):
+        """Updates frame with notes"""
+        for oldFrame in self.notesFrame.winfo_children():
+            oldFrame.destroy()
+
+        listMax = len(self.notesList)
+        if listMax > self.notesIndex:
+            note0 = self.createNoteFrame(self.notesFrame, self.notesList[self.notesIndex], 0)
+            print(note0)
+            note0.pack()
+        if listMax > self.notesIndex + 1:
+            note1 = self.createNoteFrame(self.notesFrame, self.notesList[self.notesIndex+1], 1)
+            note1.pack()
+        if listMax > self.notesIndex + 2:
+            note2 = self.createNoteFrame(self.notesFrame, self.notesList[self.notesIndex+2], 2)
+            note2.pack()
+        if listMax > self.notesIndex + 3:
+            note3 = self.createNoteFrame(self.notesFrame, self.notesList[self.notesIndex+3], 3)
+            note3.pack()
+
+        self.window.update()
+        
+    def select0(self, event):
+        self.selectNote(0)
+
+    def select1(self, event):
+        self.selectNote(1)
+
+    def select2(self, event):
+        self.selectNote(2)
+
+    def select3(self, event):
+        self.selectNote(3)
+
+    def selectNote(self, index):
+        if self.currentNote is not None:
+            self.saveCurrentNote()
+
+        for box in self.notesFrame.winfo_children():
+            if(index == self.notesFrame.winfo_children().index(box)):
+                box.config(relief = SUNKEN)
+            else:
+                box.config(relief = GROOVE)
+
+        self.currentNote = self.notesList[self.notesIndex + index]
+        self.tagsEntry["state"] = NORMAL
+        self.titleEntry["state"] = NORMAL
+        self.textBox["state"] = NORMAL
+
+        self.textBox.delete("1.0", END)
+        self.textBox.insert("1.0", self.currentNote.getText())
+        self.titleEntry.delete(0, END)
+        self.titleEntry.insert(0, self.currentNote.getTitle())
+        self.tagsEntry.delete(0, END)
+        self.titleEntry.insert(0, self.currentNote.getTags())
+
+        self.tagsEntry
+
+        self.window.update()
+        
+
+    def show(self):
+        """Makes window re-appear if invisible. Does nothing if visible. 
+        Takes no input and returns None."""
+        self.window.deiconify()
+        self.notesList = self.noteManager.getNotes()
+        self.updateNotesList()
+        
 
 
 #Data Objects (model)
@@ -931,7 +1146,7 @@ class Note(DataObjects):
     
     def getOldTags(self):
         """Return the list of old tags that are on the note"""
-        return self.OldTags
+        return self.oldTags
         
     def getOwner(self):
         """Return the owner of the note"""
@@ -984,6 +1199,10 @@ class Note(DataObjects):
     def setModified(self, nModified):
         """Updates the date the note was modified on"""
         self.lastModified = nModified
+
+    def setText(self, nText):
+        """Updates the text content of the note"""
+        self.text = nText
     
     def setEvent(self, nEvent):
         """Set the date of the event"""
