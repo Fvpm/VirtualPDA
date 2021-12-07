@@ -1,4 +1,5 @@
 from tkinter import *
+from tkinter import ttk
 import mysql.connector as mysql
 from mysql.connector import errorcode
 import keyring
@@ -121,7 +122,7 @@ class DatabaseManager(object):
             " `date_made` datetime,"
             " `lastmod` datetime,"
             " `notedata` longtext,"
-            " `date` datetime,"
+            " `date` date,"
             " `import` int(2),"
             " `title` varchar(32),"
             " `color` varchar(10),"
@@ -189,7 +190,6 @@ class DatabaseManager(object):
         loadusers = ("SELECT * FROM users")
         self.cursor.execute(loadusers)
         load = self.cursor.fetchall()
-        print(load)
         for user in load:
             if type(user[0]) is not int:
                 user[0] = int(user[0])
@@ -214,10 +214,10 @@ class DatabaseManager(object):
         load3 = self.cursor.fetchall()
         for note in load:
             notedata = []
-            notedata.append(note[2].strftime("%Y-%m-%d %h:%m:%s"))
-            notedata.append(note[3].strftime("%Y-%m-%d %h:%m:%s"))
+            notedata.append(note[2].strftime("%Y-%m-%d %H:%M:%S"))
+            notedata.append(note[3].strftime("%Y-%m-%d %H:%M:%S"))
             if note[5] is not None:
-                notedata.append(note[5].strftime("%Y-%m-%d %h:%m:%s"))
+                notedata.append(note[5].strftime("%Y-%m-%d %H:%M:%S"))
             else:
                 notedata.append(None)
 
@@ -344,6 +344,12 @@ class DatabaseManager(object):
         update_notedate = ("UPDATE notes "
                         "SET lastmod = %s "
                         "WHERE note_id = %s")
+        update_notecolor = ("UPDATE notes "
+                         "SET color = %s "
+                         "WHERE note_id = %s")
+        update_noteimportance = ("UPDATE notes "
+                              "SET import = %s "
+                              "WHERE note_id = %s")
         add_note = ("INSERT INTO notes"
                         "(note_id, user_id, date_made, lastmod, notedata, date, import, title, color, repeating)"
                         "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)")
@@ -352,7 +358,6 @@ class DatabaseManager(object):
                         "VALUES (%s, %s)")
         if note.getNew() == True:
             self.cursor.execute(add_note, (note.getId(), note.getOwner(), note.getDateMade(), note.getModified(), note.getText(), note.getEvent(), note.getImportance(), note.getTitle(), note.getColor(), note.getRepeating()))
-            print(str(note.getOwner()) + "355")
             self.cursor.execute(add_usercon, (note.getOwner(), note.getId()))
         elif note.getMark() == True:
             ident = (note.getId(), )
@@ -395,8 +400,10 @@ class DatabaseManager(object):
                 if count == 0:
                     conident = (note.getId(), olduser)
                     self.cursor.execute(delete_notecon, conident)
-            self.cursor.execute(update_notedata, note.getText(), note.getId())
-            self.cursor.execute(update_notedate, note.getModified(), note.getId())
+            self.cursor.execute(update_notedata, (note.getText(), note.getId()))
+            self.cursor.execute(update_notedate, (note.getModified(), note.getId()))
+            self.cursor.execute(update_notecolor,( note.getColor(), note.getId()))
+            self.cursor.execute(update_noteimportance, (note.getImportance(), note.getId()))
         
     def saveGroups(self, group):
         """Precondition: Group ID is not 0. Group ID and User ID are 12 digits long at max. Name is 30 characters long at max. Description is 180 characters long at max.
@@ -559,6 +566,9 @@ class UserManager(object):
 
         returns user object"""
         return self.currentUser
+
+    def logout(self):
+        self.currentUser = None
             
 
 class NoteManager(object):
@@ -596,7 +606,7 @@ class NoteManager(object):
         ownerId = currentUser.getId()
         dateMade = datetime.datetime.now().strftime("%Y-%d-%m %H:%M:%S")
         
-        newNote = Note(self.nextId, ownerId, dateMade, dateMade, "", None, 0, "", "", False)
+        newNote = Note(self.nextId, ownerId, dateMade, dateMade, "", None, 0, "", "none", False)
         newNote.setNew(True)
         self.nextId += 1
         self.noteList.append(newNote)
@@ -636,6 +646,7 @@ class GUIManager(object):
         self.guiDict = {}
         self.root = Tk()
 
+
     def setManagers(self, _databaseManager, _userManager, _noteManager, _groupManager):
         """Because Managers have to be made all at once and reference each other, this function is called when this object is created on startup but after all managers are initalized"""
         self.userManager = _userManager
@@ -654,6 +665,7 @@ class GUIManager(object):
         self.guiDict["twoPane"] = TwoPaneGUI(self.managerList, self.root)
 
         self.openWindow("login")
+        self.noteDetails = NoteDetailsGUI(self.managerList, self.root)
 
         self.root.mainloop()
 
@@ -672,6 +684,14 @@ class GUIManager(object):
     def end(self):
         """Ends the tkinter program. Is called when x on any window is pressed"""
         self.root.destroy()
+
+    def openNoteDetails(self):
+        currentNote = self.currentWindow.getCurrentNote()
+        self.currentWindow.hide()
+        view = "twoPane" if self.currentWindow == self.guiDict["twoPane"] else "calendar"
+        self.currentWindow = self.noteDetails
+        self.noteDetails.openNoteDetails(currentNote, view)
+
     
     def popup(self, text):
         """Creates a simple popup with "ok" to close"""
@@ -736,7 +756,7 @@ class LoginGUI(AbstractGUI):
         registerButton.pack()
         loginButton = Button(buttonFrame, text = "Login", command = self.login)
         loginButton.pack()
-        guestButton = Button(buttonFrame, text = "Guest", command = None)
+        guestButton = Button(buttonFrame, text = "Guest", command = None, state = DISABLED) #TODO implement guest
         guestButton.pack()
 
         userNameFrame = Frame(entryFrame)
@@ -766,7 +786,6 @@ class LoginGUI(AbstractGUI):
         userName = self.userNameEntry.get()
         password = self.passwordEntry.get()
         success = self.userManager.login(userName,password)
-        print(success)
         if success:
             self.guiManager.openWindow("home")
         else:
@@ -825,12 +844,21 @@ class HomeGUI(AbstractGUI):
         twoPaneViewButton = Button(self.window, text = "two pane view", command = self.openTwoPane)
         twoPaneViewButton.pack()
 
+        #menu
+        self.menuBar = Menu(self.window)
+        self.window["menu"] = self.menuBar
+
+        userMenu = Menu(self.menuBar)
+        self.menuBar.add_cascade(label = "User", menu = userMenu)
+        userMenu.add_command(label = 'Logout', command = self.backToLogin)
+        self.menuBar.entryconfig("User", state = DISABLED)
     def openTwoPane(self):
         self.guiManager.openWindow("twoPane")
 
     def show(self):
         super().show()
         #self.window.config(menu=self.menubar)
+        self.menuBar.entryconfig("User", state = NORMAL)
 
     def hide(self):
         super().hide()
@@ -871,11 +899,17 @@ class TwoPaneGUI(AbstractGUI):
         self.infoFrame.pack(side= RIGHT, fill = BOTH)
         
         #left widgets
-        newNotesButton = Button(leftFrame, text = "+", command = self.newNote)
+        listControlsFrame = Frame(leftFrame)
+        newNotesButton = Button(listControlsFrame, text = "+", command = self.newNote)
+        scrollUpButton = Button(listControlsFrame, text = "^", command = self.scrollUp)
+        scrollDownButton = Button(listControlsFrame,text= "v", command = self.scrollDown)
         self.notesFrame = Frame(leftFrame, bg = "red")
 
         self.notesFrame.pack(side = TOP, fill = BOTH)
-        newNotesButton.pack(side = BOTTOM, anchor = "sw", fill = X)
+        listControlsFrame.pack(side = BOTTOM, fill = X)
+        scrollDownButton.pack(side = RIGHT)
+        scrollUpButton.pack(side = RIGHT)
+        newNotesButton.pack(side = LEFT, fill = X)
 
         #right widgets
         titleFrame = Frame(self.infoFrame, width = 400, height = 20)
@@ -884,12 +918,12 @@ class TwoPaneGUI(AbstractGUI):
         tagFrame.pack_propagate(False)
         textBoxFrame = Frame(self.infoFrame, width = 400, height = 500)
         textBoxFrame.pack_propagate(False)
-        saveButton = Button(self.infoFrame,text = "save", command = self.saveCurrentNote)
+        self.saveButton = Button(self.infoFrame,text = "save", command = self.saveCurrentNote, state = DISABLED)
 
         titleFrame.pack(side=TOP)
         tagFrame.pack(side=TOP)
         textBoxFrame.pack(side=TOP)
-        saveButton.pack(side=BOTTOM, fill = X)
+        self.saveButton.pack(side=BOTTOM, fill = X)
 
         #right subwidgets
         titleLabel = Label(titleFrame, text = "Title:")
@@ -897,21 +931,26 @@ class TwoPaneGUI(AbstractGUI):
         titleLabel.pack(side = LEFT)
         self.titleEntry.pack(side = LEFT, fill = X, expand = True)
 
-        detailsButton = Button(tagFrame, text = "details", command = self.openNoteDetails)
+        self.detailsButton = Button(tagFrame, text = "details", command = self.openNoteDetails, state = DISABLED)
         tagsLabel = Label(tagFrame, text = "Tags:")
         self.tagsEntry = Entry(tagFrame, state = DISABLED)
         tagsLabel.pack(side = LEFT)
         self.tagsEntry.pack(side = LEFT, fill = X, expand = True)
-        detailsButton.pack(side = RIGHT)
+        self.detailsButton.pack(side = RIGHT)
 
         self.textBox = Text(textBoxFrame, state = DISABLED)
         self.textBox.pack(fill = BOTH, expand = True)
 
+
+    def logout(self):
+        self.userManager.logout()
+        self.guiManager.openWindow("login")
+
     def openNoteDetails(self):
-        return
+        self.guiManager.openNoteDetails()
 
     def saveCurrentNote(self):
-        self.currentNote.setText(self.textBox.get("1.0", END))
+        self.currentNote.setText(self.textBox.get("1.0", "end-1c"))
         self.currentNote.setTitle(self.titleEntry.get())
         self.currentNote.setTags(self.tagsEntry.get())
         self.currentNote.setUpdate(True)
@@ -984,7 +1023,6 @@ class TwoPaneGUI(AbstractGUI):
         listMax = len(self.notesList)
         if listMax > self.notesIndex:
             note0 = self.createNoteFrame(self.notesFrame, self.notesList[self.notesIndex], 0)
-            print(note0)
             note0.pack()
         if listMax > self.notesIndex + 1:
             note1 = self.createNoteFrame(self.notesFrame, self.notesList[self.notesIndex+1], 1)
@@ -997,6 +1035,16 @@ class TwoPaneGUI(AbstractGUI):
             note3.pack()
 
         self.window.update()
+
+    def scrollDown(self):
+        if len(self.notesList) > self.notesIndex + 4:
+            self.notesIndex += 1
+            self.updateNotesList()
+
+    def scrollUp(self):
+        if self.notesIndex > 0:
+            self.notesIndex -= 1
+            self.updateNotesList()
         
     def select0(self, event):
         self.selectNote(0)
@@ -1011,6 +1059,20 @@ class TwoPaneGUI(AbstractGUI):
         self.selectNote(3)
 
     def selectNote(self, index):
+        if index == -1:
+            self.currentNote = None
+            for box in self.notesFrame.winfo_children():
+                box.config(relief = GROOVE)
+            self.textBox.delete("1.0", END)
+            self.titleEntry.delete(0, END)
+            self.tagsEntry.delete(0, END)
+            self.tagsEntry["state"] = DISABLED
+            self.titleEntry["state"] = DISABLED
+            self.textBox["state"] = DISABLED
+            self.saveButton["state"] = DISABLED
+            self.detailsButton["state"] = DISABLED
+            self.window.update()
+            return
         if self.currentNote is not None:
             self.saveCurrentNote()
 
@@ -1024,6 +1086,8 @@ class TwoPaneGUI(AbstractGUI):
         self.tagsEntry["state"] = NORMAL
         self.titleEntry["state"] = NORMAL
         self.textBox["state"] = NORMAL
+        self.saveButton["state"] = NORMAL
+        self.detailsButton["state"] = NORMAL
 
         self.textBox.delete("1.0", END)
         self.textBox.insert("1.0", self.currentNote.getText())
@@ -1043,7 +1107,112 @@ class TwoPaneGUI(AbstractGUI):
         self.window.deiconify()
         self.notesList = self.noteManager.getNotes()
         self.updateNotesList()
+    
+    def hide(self):
+        super().hide()
+        self.selectNote(-1)
+
+    def getCurrentNote(self):   
+        return self.currentNote
+
+class NoteDetailsGUI(AbstractGUI):
+    def __init__(self, managerList, parent):
+        super().__init__(managerList,parent)
+        self.window.geometry("400x700")
+        self.backTo = ""
+        self.currentNote = None
+
+        #Top layer widgets top to bottom
+        backButton = Button(self.window, text = "<- Save", command = self.back)
+        titleFrame = Frame(self.window)
+        tagFrame = Frame(self.window)
+        contentLabel = Label(self.window, text = "Conent:")
+        self.contentBox = Text(self.window)
+        dateFrame = Frame(self.window)
+        priorityFrame = Frame(self.window)
+        colorFrame = Frame(self.window)
+        sharedFrame = Frame(self.window)
+        self.sharedList = Listbox(self.window)
+
+        backButton.pack(side = TOP, anchor = "nw")
+        titleFrame.pack(side = TOP)
+        tagFrame.pack(side = TOP)
+        contentLabel.pack(side = TOP)
+        self.contentBox.pack(side = TOP)
+        dateFrame.pack(side = TOP)
+        priorityFrame.pack(side = TOP)
+        colorFrame.pack(side = TOP)
+        sharedFrame.pack(side = TOP)
+        self.sharedList.pack(side = TOP)
+
+        #Second layer widgets
+        titleLabel = Label(titleFrame, text = "Title:")
+        self.titleEntry = Entry(titleFrame)
+        titleLabel.pack(side = LEFT)
+        self.titleEntry.pack(side = RIGHT, fill = X)
+
+        tagLabel = Label(tagFrame, text = "Tags:")
+        self.tagEntry = Entry(tagFrame, state = DISABLED) #TODO enable
+        tagLabel.pack(side = LEFT)
+        self.tagEntry.pack(side = RIGHT, fill = X)
+
+        dateLabel = Label(dateFrame, text= "Date:")
+        self.dateEntry = Entry(dateFrame, state = DISABLED) #TODO enable
+        dateLabel.pack(side = LEFT)
+        self.dateEntry.pack(side = RIGHT, fill = X)
+
+        priorityLabel = Label(priorityFrame, text = "Priority:")
+        self.priorityEntry = Scale(priorityFrame, orient = HORIZONTAL, from_ = 0, to = 4)
+        priorityLabel.pack(side = LEFT)
+        self.priorityEntry.pack(side = RIGHT, fill = X)
+
+        colorLabel = Label(colorFrame, text = "Color:")
+        self.colorValues = ("none", "red", "blue", "green", "purple", "yellow")
+        self.colorEntry = ttk.Combobox(colorFrame, values = self.colorValues, state = "readonly")
+        self.colorEntry.current(0)
+        colorLabel.pack(side = LEFT)
+        self.colorEntry.pack(side = RIGHT)
+
+        sharedLabel = Label(sharedFrame, text = "Shared with:")
+        #sharedButton = Button(sharedFrame, text = "Share", command = share())
+        sharedLabel.pack(side = LEFT)
+        #sharedButton.pack(side = RIGHT)
+
+    def share():
+        #TODO
+        return
+
+    def openNoteDetails(self, note, view):
+        self.backTo = view
+        self.currentNote = note
+
+        self.titleEntry.delete(0, END)
+        self.titleEntry.insert(0, self.currentNote.getTitle())
+        self.tagEntry.delete(0, END)
+        self.tagEntry.insert(0, self.currentNote.getTags())
+        self.contentBox.delete("1.0", END)
+        self.contentBox.insert("1.0", self.currentNote.getText())
+        self.dateEntry.delete(0, END)
+        if(self.currentNote.getEvent() != None):
+            self.dateEntry.insert(0, self.currentNote.getEvent())
+        self.priorityEntry.set(self.currentNote.getImportance())
+        self.colorEntry.current(self.colorValues.index(self.currentNote.getColor()))
+        self.show()
+
+
+    def back(self):
+        self.save()
+        self.guiManager.openWindow(self.backTo)
         
+
+    def save(self):
+        self.currentNote.setUpdate(True)
+        self.currentNote.setTitle(self.titleEntry.get())
+        self.currentNote.setTags(self.tagEntry.get())
+        self.currentNote.setText(self.contentBox.get("1.0","end-1c"))
+        self.currentNote.setEvent(self.dateEntry.get())
+        self.currentNote.setImportance(self.priorityEntry.get())
+        self.currentNote.setColor(self.colorEntry.get())
 
 
 #Data Objects (model)
