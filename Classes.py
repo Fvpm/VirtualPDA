@@ -842,7 +842,7 @@ class RegisterGUI(AbstractGUI):
 
         self.usernameEntry = Entry(self.window)
         self.passwordEntry = Entry(self.window)
-        self.confirmPasswordEntry = Entry(self.window)
+        self.confirmPasswordEntry = Entry(self.window, state = DISABLED)
 
         usernameLabel.pack()
         self.usernameEntry.pack()
@@ -1119,7 +1119,7 @@ class TwoPaneGUI(AbstractGUI):
                 box.config(relief = GROOVE)
 
         self.currentNote = self.notesList[self.notesIndex + index]
-        self.tagsEntry["state"] = NORMAL
+        #self.tagsEntry["state"] = NORMAL
         self.titleEntry["state"] = NORMAL
         self.textBox["state"] = NORMAL
         self.saveButton["state"] = NORMAL
@@ -1162,13 +1162,21 @@ class NoteDetailsGUI(AbstractGUI):
         backButton = Button(self.window, text = "<- Save", command = self.back)
         titleFrame = Frame(self.window)
         tagFrame = Frame(self.window)
-        contentLabel = Label(self.window, text = "Conent:")
-        self.contentBox = Text(self.window)
+        contentLabel = Label(self.window, text = "Content:")
+        self.contentBox = Text(self.window, height = 12)
         dateFrame = Frame(self.window)
         priorityFrame = Frame(self.window)
         colorFrame = Frame(self.window)
         sharedFrame = Frame(self.window)
         self.sharedList = Listbox(self.window)
+
+        self.idText = StringVar()
+        self.creatorText = StringVar()
+        self.createdText = StringVar()
+
+        idLabel = Label(self.window, textvariable = self.idText)
+        creatorLabel = Label(self.window, textvariable = self.creatorText)
+        createdLabel = Label(self.window, textvariable = self.createdText)
 
         backButton.pack(side = TOP, anchor = "nw")
         titleFrame.pack(side = TOP)
@@ -1180,6 +1188,9 @@ class NoteDetailsGUI(AbstractGUI):
         colorFrame.pack(side = TOP)
         sharedFrame.pack(side = TOP)
         self.sharedList.pack(side = TOP)
+        idLabel.pack(side = TOP)
+        creatorLabel.pack(side = TOP)
+        createdLabel.pack(side = TOP)
 
         #Second layer widgets
         titleLabel = Label(titleFrame, text = "Title:")
@@ -1233,6 +1244,9 @@ class NoteDetailsGUI(AbstractGUI):
             self.dateEntry.insert(0, self.currentNote.getEvent())
         self.priorityEntry.set(self.currentNote.getImportance())
         self.colorEntry.current(self.colorValues.index(self.currentNote.getColor()))
+        self.idText.set("Note ID:" + str(self.currentNote.getId()))
+        self.creatorText.set("Creator ID:" + str(self.currentNote.getOwner()))
+        self.createdText.set("Created :" + self.currentNote.getDateMade())
         self.show()
 
 
@@ -1411,6 +1425,9 @@ class Note(DataObjects):
     
     def setEvent(self, nEvent):
         """Set the date of the event"""
+        if(nEvent == ""):
+            self.eventDate = None
+            return
         self.eventDate = nEvent
     
     def setImportance(self, nImportance):
