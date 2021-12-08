@@ -230,7 +230,7 @@ class DatabaseManager(object):
                         tag[0] = int(tag[0])
                     if type(tag[1]) is not str:
                         tag[1] = str(tag[1])
-                    note.addTag((tag[0], tag[1]))
+                    note.addTag([tag[0], tag[1]])
             note.fillOldTags()
             #Connect notes with users that can see them
             for con in load3:
