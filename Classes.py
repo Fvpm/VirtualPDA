@@ -59,6 +59,8 @@ class DatabaseManager(object):
         self.loadUsers()
         self.loadNotes()
         self.loadGroups()
+
+
         return [self.userManager, self.noteManager, self.groupManager, self.guiManager]
 
     def verifyDatabase(self):
@@ -221,11 +223,11 @@ class DatabaseManager(object):
             notedata.append(note[2].strftime("%Y-%m-%d %H:%M:%S"))
             notedata.append(note[3].strftime("%Y-%m-%d %H:%M:%S"))
             if note[5] is not None:
-                notedata.append(note[5].strftime("%Y-%m-%d %H:%M:%S"))
+                notedata.append(note[5].strftime("%Y-%m-%d"))
             else:
                 notedata.append(None)
 
-            self.noteManager.addNote(note[0], note[1], notedata[0], notedata[1], note[4], note[5], note[6], note[7], note[8], note[9])
+            self.noteManager.addNote(note[0], note[1], notedata[0], notedata[1], note[4], notedata[2], note[6], note[7], note[8], note[9])
         for note in self.noteManager.noteList:
             #Connect tags with their notes
             for tag in load2:
@@ -364,8 +366,8 @@ class DatabaseManager(object):
         delete_notetag=("DELETE FROM tags WHERE note_id = %s")
         remove_tag = ("DELETE FROM tags WHERE tag_id = %s AND note_id = %s")
         add_tag = ("INSERT INTO tags"
-                   "(tag_id, tag_text, note_id)"
-                   "VALUES (%s, %s, %s)")
+                   "(tag_id, tag_text, note_id) "
+                   "VALUES (%s, %s, %s) ")
         update_notedata = ("UPDATE notes "
                         "SET notedata = %s "
                         "WHERE note_id = %s")
@@ -378,6 +380,10 @@ class DatabaseManager(object):
         update_noteimportance = ("UPDATE notes "
                               "SET import = %s "
                               "WHERE note_id = %s")
+        update_noteEventDate = ("UPDATE notes "
+                                "SET date = %s "
+                                "WHERE note_id = %s")
+        update_noteTitle = ("UPDATE notes SET title = %s WHERE note_id = %s")
         add_note = ("INSERT INTO notes"
                         "(note_id, user_id, date_made, lastmod, notedata, date, import, title, color, repeating)"
                         "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)")
@@ -436,6 +442,8 @@ class DatabaseManager(object):
             self.cursor.execute(update_notedate, (note.getModified(), note.getId()))
             self.cursor.execute(update_notecolor,( note.getColor(), note.getId()))
             self.cursor.execute(update_noteimportance, (note.getImportance(), note.getId()))
+            self.cursor.execute(update_noteEventDate, (note.getEvent(), note.getId()))
+            self.cursor.execute(update_noteTitle, (note.getTitle(), note.getId()))
         
     def saveGroups(self, group):
         """Saves all data concerning groups to the database"""
@@ -606,6 +614,12 @@ class UserManager(object):
 
     def logout(self):
         self.currentUser = None
+
+    def isUsernameTaken(self, username):
+        for user in self.userList:
+            if user.getUsername() == username:
+                return True
+        return False
             
 
 class NoteManager(object):
@@ -650,7 +664,9 @@ class NoteManager(object):
         self.noteList.append(newNote)
 
     def generateNewNote(self):
+        """ Creates a new, blank note
 
+        returns Note object"""
         currentUser = self.userManager.getCurrentUser()
         ownerId = currentUser.getId()
         dateMade = datetime.datetime.now().strftime("%Y-%d-%m %H:%M:%S")
@@ -671,6 +687,7 @@ class NoteManager(object):
         for note in self.noteList:
             if note.getOwner() == currentUser.getId():
                 userNotes.append(note)
+        userNotes.reverse()
         return userNotes
 
 
@@ -714,6 +731,7 @@ class GUIManager(object):
         self.guiDict["register"] = RegisterGUI(self.managerList, self.root)
         self.guiDict["home"] = HomeGUI(self.managerList, self.root)
         self.guiDict["twoPane"] = TwoPaneGUI(self.managerList, self.root)
+        self.guiDict["calendar"] = CalendarGUI(self.managerList, self.root)
 
         self.openWindow("login")
         self.noteDetails = NoteDetailsGUI(self.managerList, self.root)
@@ -737,6 +755,7 @@ class GUIManager(object):
         self.root.destroy()
 
     def openNoteDetails(self):
+        """Opens the NoteDetailsGUIs, grabbing appropriate information from previous GUI"""
         currentNote = self.currentWindow.getCurrentNote()
         self.currentWindow.hide()
         view = "twoPane" if self.currentWindow == self.guiDict["twoPane"] else "calendar"
@@ -746,8 +765,7 @@ class GUIManager(object):
     
     def popup(self, text):
         """Creates a simple popup with "ok" to close"""
-        #TODO
-        pass
+        thePopup = PopupGUI(self.currentWindow, text)
 
 
 
@@ -789,41 +807,59 @@ class AbstractGUI(object):
         self.guiManager.end()
         self.databaseManager.saveDatabase()
 
+class PopupGUI(object):
+    """Simple popup that is closed with an ok dialog"""
+    def __init__(self, parent, message):
+        self.window = Toplevel()
+        self.window.geometry("200x125+200+200")
+        messageLabel = Label(self.window, text=message)
+        okButton = Button(self.window, text = "OK", command = self.closePopup)
+        messageLabel.pack()
+        okButton.pack()
+
+        self.window.bind("<FocusOut>", self.closePopupEvent)
+        self.window.focus_force()
+
+    def closePopupEvent(self, event):
+        self.closePopup()
+
+    def closePopup(self):
+        self.window.destroy()
 
 class LoginGUI(AbstractGUI):
     def __init__(self, managerList, parent):
         """Creates the window and all its widgets."""
         super().__init__(managerList, parent)
 
-        self.window.geometry("600x400")
+        self.window.geometry("600x400+200+200")
 
-        buttonFrame = Frame(master=self.window, height=150, bg="red")
+        buttonFrame = Frame(master=self.window, height=150)
         buttonFrame.pack(fill=BOTH, side=BOTTOM, expand=True)
 
-        entryFrame = Frame(master=self.window, height=250, bg="blue")
+        entryFrame = Frame(master=self.window, height=250)
         entryFrame.pack(fill=BOTH, side=TOP, expand=True)
 
         registerButton = Button(buttonFrame, text = "Register", command = self.openRegisterWindow)
-        registerButton.pack()
+        registerButton.pack(side = LEFT, expand = True)
         loginButton = Button(buttonFrame, text = "Login", command = self.login)
-        loginButton.pack()
+        loginButton.pack( side = LEFT, expand = True)
         guestButton = Button(buttonFrame, text = "Guest", command = None, state = DISABLED) #TODO implement guest
-        guestButton.pack()
+        guestButton.pack( side = LEFT, expand = True)
 
         userNameFrame = Frame(entryFrame)
-        userNameFrame.pack()
+        userNameFrame.pack(expand = True)
         userNameLabel = Label(userNameFrame, text = "Username:")
         userNameLabel.pack(side=LEFT)
         self.userNameEntry = Entry(userNameFrame)
         self.userNameEntry.pack(side=RIGHT)
 
         passwordFrame = Frame(entryFrame)
-        passwordFrame.pack()
+        passwordFrame.pack(expand = True)
         passwordLabel = Label(passwordFrame, text = "Password:")
         passwordLabel.pack(side=LEFT)
         self.passwordEntry = Entry(passwordFrame)
         self.passwordEntry.pack(side=RIGHT)
-        
+         
 
     def openRegisterWindow(self):
         """Opens the register window, which will set loginGUI (this object) to invisible
@@ -845,7 +881,7 @@ class LoginGUI(AbstractGUI):
 class RegisterGUI(AbstractGUI):
     def __init__(self, managerList, parent):
         super().__init__(managerList, parent)
-        self.window.geometry("400x700")
+        self.window.geometry("400x300+200+200")
         
         backButton = Button(self.window, text = "<-", command = self.backToLogin)
         backButton.pack(side = TOP, anchor = "nw")
@@ -856,8 +892,8 @@ class RegisterGUI(AbstractGUI):
         registerButton = Button(self.window, text = "Register", command = self.newUser)
 
         self.usernameEntry = Entry(self.window)
-        self.passwordEntry = Entry(self.window)
-        self.confirmPasswordEntry = Entry(self.window, state = DISABLED)
+        self.passwordEntry = Entry(self.window, show = "*")
+        self.confirmPasswordEntry = Entry(self.window, show = "*")
 
         usernameLabel.pack()
         self.usernameEntry.pack()
@@ -872,9 +908,20 @@ class RegisterGUI(AbstractGUI):
         """Runs when users click button labeled "Register". Creates a new user entry and reopens login window.
         Grabs username and password from entry fields
         Takes no input and returns none."""
-        #TODO confirm password
         username = self.usernameEntry.get()
         password = self.passwordEntry.get()
+        passwordConfirmation = self.confirmPasswordEntry.get()
+        
+        if len(username) > 16 or len(password) > 16:
+            self.guiManager.popup("Username and password may only be up to 16 characters.")
+            return
+        if password != passwordConfirmation:
+            self.guiManager.popup("Passwords do not match")
+            return
+        if self.userManager.isUsernameTaken(username):
+            self.guiManager.popup("Username is already in use")
+            return
+
         self.userManager.newUser(username, password)
         self.backToLogin()
 
@@ -887,13 +934,16 @@ class RegisterGUI(AbstractGUI):
 class HomeGUI(AbstractGUI):
     def __init__(self, managerList, parent):
         super().__init__(managerList, parent)
-        self.window.geometry("800x600")
+        self.window.geometry("800x600+200+200")
 
         backButton = Button(self.window, text = "<-", command = self.backToLogin)
         backButton.pack(side = TOP, anchor = "nw")
 
         twoPaneViewButton = Button(self.window, text = "two pane view", command = self.openTwoPane)
         twoPaneViewButton.pack()
+
+        calendarViewButton = Button(self.window, text = "calendar view", command = self.openCalendar)
+        calendarViewButton.pack()
 
         #menu
         self.menuBar = Menu(self.window)
@@ -903,8 +953,12 @@ class HomeGUI(AbstractGUI):
         self.menuBar.add_cascade(label = "User", menu = userMenu)
         userMenu.add_command(label = 'Logout', command = self.backToLogin)
         self.menuBar.entryconfig("User", state = DISABLED)
+
     def openTwoPane(self):
         self.guiManager.openWindow("twoPane")
+
+    def openCalendar(self):
+        self.guiManager.openWindow("calendar")
 
     def show(self):
         super().show()
@@ -933,13 +987,222 @@ class HomeGUI(AbstractGUI):
     def openPasswordChangeWindow(self):
         pass
 
-class TwoPaneGUI(AbstractGUI):
+class CalendarGUI(AbstractGUI):
+    """GUI class for the calendar view in VirtualPDA"""
     def __init__(self, managerList, parent):
         super().__init__(managerList,parent)
-        self.window.geometry("800x600")
+        self.window.geometry("800x600+200+200")
+        self.today = datetime.datetime.now()
+        self.firstDayOnCal = self.today
+        self.currentMonth = self.today.month
+        self.currentYear = self.today.year
+
+        
+        self.notesList = [] #Notes available to the user
+        self.widgetNoteDict = {}
+        self.dayFrames = [] # the 35 frames for all the days
+
+        #This is gonna be a nightmare
+        topFrame = Frame(self.window)
+        bottomFrame = Frame(self.window)
+        #Top Frame Stuff
+        self.calendarLabel = Label(topFrame, text = self.today.strftime("%B '%y"), font=("TkDefaultFont", 24))
+        self.twoPaneImage = PhotoImage(file="list.gif")
+        self.twoPaneImage = self.twoPaneImage.subsample(4)
+        twoPaneButton = Button(topFrame, image = self.twoPaneImage, command = self.switchToListView)
+        backYearButton = Button(topFrame, text = "<<<", command = self.backYear)
+        backMonthButton = Button(topFrame, text = "<",command = self.backMonth)
+        forwardYearButton = Button(topFrame, text = ">>>", command = self.forwardYear)
+        forwardMonthButton = Button(topFrame, text = ">", command = self.forwardMonth)
+
+        twoPaneButton.pack(side = RIGHT, anchor = "ne")
+        forwardYearButton.pack(side = RIGHT)
+        forwardMonthButton.pack(side = RIGHT)
+        backYearButton.pack(side = LEFT)
+        backMonthButton.pack(side = LEFT)
+        self.calendarLabel.pack()
+
+
+        #Bottom Frame stuff
+
+        self.calendarFrame = Frame(bottomFrame)
+
+        topFrame.pack(side = TOP, fill = BOTH)
+        bottomFrame.pack(side = BOTTOM, fill = BOTH, expand = True)
+        self.calendarFrame.pack(side = RIGHT, fill = BOTH, expand = True)
+
+        self.undatedColumn = Frame(bottomFrame)
+        self.undatedColumn.pack(side = LEFT, fill = Y)
+
+        for i in range(7):
+            days = ["S","M","T","W","T","F","S"]
+            dayLabel = Label(self.calendarFrame, text = days[i])
+            dayLabel.place(y = 0, relx = i * 1/7 + 1/15)
+            #dayLabel.grid(row = 0, column = i,)
+
+    def logout(self):
+        """Logs the user out and goes back to first window
+            returns None"""
+        self.userManager.logout()
+        self.guiManager.openWindow("login")
+
+    
+    def updateCalendarFrame(self):
+        self.widgetNoteDict = {}
+        self.dayFrames = []
+
+        for widg in self.calendarFrame.winfo_children():
+            if str(type(widg)) == "<class 'tkinter.Frame'>":
+                widg.destroy()
+
+        day = datetime.datetime(self.currentYear, self.currentMonth, 1).replace(day = 1)
+        while(day.strftime("%w") != "0"):
+            day = day - datetime.timedelta(days = 1)
+        self.firstDayOnCal = day
+
+
+        for i in range(35):
+            dayList = []
+            dayFrame = self.createDayFrame(day, i)
+            #TODO grid
+            dayFrame.place(relwidth = 1/7, relheight = .19, relx = (i%7)*(1/7), rely = ((i//7) * 1/5) * .95 + .05)
+            self.dayFrames.append(dayFrame)
+            day = day + datetime.timedelta(days = 1)
+        
+    def newNote(self, event):
+        note = self.noteManager.generateNewNote()
+        dayOnCalIndex = self.dayFrames.index(event.widget)
+        day = self.firstDayOnCal
+        day = day + datetime.timedelta(days = dayOnCalIndex)
+        newNoteLabel = Label(event.widget, text = "Untitled", bd = 1, relief = GROOVE)
+        newNoteLabel.bind("<Double-Button-1>", self.doubleClickNoteLabel)
+        newNoteLabel.pack(side = TOP)
+        self.widgetNoteDict[newNoteLabel] = note
+        note.setEvent(day.strftime("%Y-%m-%d"))
+
+        self.currentNote = note
+        self.updateCalendarFrame()
+        self.guiManager.openNoteDetails()
+
+        
+
+
+    def createDayFrame(self, day, index):
+        dayNumber = day.strftime("%d")
+        dayText = day.strftime("%Y-%m-%d")
+        dayFrame = Frame(self.calendarFrame, relief = RIDGE, bd = 2)
+        dayFrame.bind("<Double-Button-1>", self.newNote)
+        numberLabel = Label(dayFrame, text = dayNumber)
+        numberLabel.pack(side = BOTTOM, anchor = "se")
+
+        for note in self.notesList:
+            if note.getEvent() == None:
+                continue
+                #TODO make sure I know how to use continue
+            if dayText in note.getEvent():
+                title = note.getTitle()
+                if title == "":
+                    title = "Untitled"
+                noteLabel = Label(dayFrame, text = title, bd = 1, relief = GROOVE)
+                noteColor = note.getColor()
+                if noteColor == "red":
+                    noteLabel["bg"] = "#FFAAAA"
+                elif noteColor == "blue":
+                    noteLabel["bg"] = "#AAAAFF"
+                elif noteColor == "green":
+                    noteLabel["bg"] = "#AAFFAA"
+                elif noteColor == "yellow":
+                    noteLabel["bg"] = "#FFFF99"
+                elif noteColor == "purple":
+                    noteLabel["bg"] = "#BB99FF"
+                noteLabel.bind("<Double-Button-1>", self.doubleClickNoteLabel)
+                noteLabel.pack(side = TOP)
+                self.widgetNoteDict[noteLabel] = note
+        return dayFrame
+
+
+    def getCurrentNote(self):
+        return self.currentNote
+
+    def clickNoteLabel(self, event):
+        #TODO
+        return
+
+    def doubleClickNoteLabel(self, event):
+        labelClicked = event.widget
+        self.currentNote = self.widgetNoteDict[labelClicked]
+        self.guiManager.openNoteDetails()
+
+        return
+
+    def switchToListView(self):
+        self.guiManager.openWindow("twoPane")
+
+    def updateMonthLabel(self):
+        self.calendarLabel["text"] = datetime.datetime(self.currentYear,self.currentMonth,1).strftime("%B '%y")
+        
+
+    def backYear(self):
+        self.currentYear -= 1
+        self.updateMonthLabel()
+        self.updateCalendarFrame()
+
+    def backMonth(self):
+        self.currentMonth -= 1
+        if self.currentMonth == 0:
+            self.currentMonth = 12
+            self.currentYear -= 1
+        self.updateMonthLabel()
+        self.updateCalendarFrame()
+
+    def forwardYear(self):
+        self.currentYear += 1
+        self.updateMonthLabel()
+        self.updateCalendarFrame()
+    
+    def forwardMonth(self):
+        self.currentMonth += 1
+        if self.currentMonth == 13:
+            self.currentMonth = 1
+            self.currentYear += 1
+        self.updateMonthLabel()
+        self.updateCalendarFrame()
+        
+        
+
+    def show(self):
+        """Makes window re-appear if invisible, and loads in Notes from current user into the GUI 
+        Takes no input and returns None."""
+
+        self.window.deiconify()
+        self.notesList = self.noteManager.getNotes()
+        self.updateCalendarFrame()
+        
+
+class TwoPaneGUI(AbstractGUI):
+    """GUI Class for the Two Pane View / List View in VirtualPDA"""
+    def __init__(self, managerList, parent):
+        super().__init__(managerList,parent)
+        self.window.geometry("800x600+200+200")
         self.notesList = []
         self.notesIndex = 0
         self.currentNote = None
+        #top Bar (please don't mess up)
+        barFrame = Frame(self.window, width = 800, height = 20)
+        barFrame.pack_propagate(False)
+        barFrame.pack(side=TOP)
+
+        listViewFrame = Frame(barFrame, width = 400, height = 20)
+        calendarViewFrame = Frame(barFrame, width = 400, height = 20, bd = 3, relief = RAISED)
+        calendarViewFrame.pack_propagate(True)
+        listViewFrame.pack(side=LEFT)
+        calendarViewFrame.pack(side=RIGHT)
+
+        switchLabel = Label(calendarViewFrame, text = "Calendar")
+        switchLabel.pack()
+        switchLabel.bind("<Button-1>",self.openCalendarView)
+        calendarViewFrame.bind("<Button-1>",self.openCalendarView)
+
 
         #outer frames
         leftFrame = Frame(self.window, bg = "red", width = 400)
@@ -994,21 +1257,41 @@ class TwoPaneGUI(AbstractGUI):
 
 
     def logout(self):
+        """Logs the user out and goes back to first window
+            returns None"""
         self.userManager.logout()
         self.guiManager.openWindow("login")
+    
+    def openCalendarView(self, event):
+        self.saveCurrentNote()
+        self.guiManager.openWindow("calendar")
 
     def openNoteDetails(self):
+        """ Opens GUI with currently selected note's details
+            returns None"""
         self.guiManager.openNoteDetails()
 
     def saveCurrentNote(self):
+        """ Grabs info from widgets, saves note, and updates display
+            returns False if successful (with popup) and True otherwise"""
+        if len(self.titleEntry.get()) > 32:
+            self.guiManager.popup("Title must be 32 characters or less")
+            return False
+        if self.currentNote == None:
+            return False
+
         self.currentNote.setText(self.textBox.get("1.0", "end-1c"))
         self.currentNote.setTitle(self.titleEntry.get())
-        self.currentNote.setTags(self.tagsEntry.get())
+        self.currentNote.setTags(self.tagsEntry.get())#TODO tags
+
+
         self.currentNote.setUpdate(True)
 
         self.updateNotesList()
-
+        return True
     def newNote(self):
+        """ Creates a new note, inserts it to the top of the list, and automatically selects it
+            returns None"""
         theNewNote = self.noteManager.generateNewNote()
         self.notesList.insert(0, theNewNote)
         self.notesIndex = 0
@@ -1017,7 +1300,15 @@ class TwoPaneGUI(AbstractGUI):
 
 
     def createNoteFrame(self, parent, note, bindIndex):
-        """returns a tkinter frame object with a note's specifications"""
+        """ Creates a tkinter frame object with a note's specifications for use in the note list in TwoPaneGUI
+
+            parent          : Valid tkinter parent object
+            note       Note : Note object to grab data from
+            bindIndex  int  : Index value 0 to 3 inclusive for mouse-click binding to help select notes.
+
+            returns a Frame with decorators for title, content, color, and priority
+        """
+
         noteTitle = note.getTitle()
         noteContent = note.getText()
         noteColor = note.getColor()
@@ -1030,13 +1321,17 @@ class TwoPaneGUI(AbstractGUI):
         if noteColor == "red":
             noteFrame["bg"] = "#FFAAAA"
         elif noteColor == "blue":
-            noteFrame["bg"] = "#AAFFAA"
-        elif noteColor == "green":
             noteFrame["bg"] = "#AAAAFF"
+        elif noteColor == "green":
+            noteFrame["bg"] = "#AAFFAA"
         elif noteColor == "yellow":
             noteFrame["bg"] = "#FFFF99"
         elif noteColor == "purple":
-            noteFrame["bg"] = "#FF99FF"
+            noteFrame["bg"] = "#BB99FF"
+        elif (bindIndex + self.notesIndex) %2 == 0:
+            noteFrame["bg"] = "#F0F0F0"
+        else:
+            noteFrame["bg"] = "#E0E0E0"
 
         contentLabel = Label(noteFrame, text = noteContent)
         titleLabel = Label(noteFrame)
@@ -1064,52 +1359,62 @@ class TwoPaneGUI(AbstractGUI):
         titleLabel.pack(side = TOP)
         contentLabel.pack(side = BOTTOM)
         
+        noteFrame.pack()
+
         return noteFrame
 
     def updateNotesList(self):
-        """Updates frame with notes"""
+        """Updates note list in GUI. Used for scrolling and updating list.
+        returns None"""
         for oldFrame in self.notesFrame.winfo_children():
             oldFrame.destroy()
 
         listMax = len(self.notesList)
         if listMax > self.notesIndex:
             note0 = self.createNoteFrame(self.notesFrame, self.notesList[self.notesIndex], 0)
-            note0.pack()
         if listMax > self.notesIndex + 1:
             note1 = self.createNoteFrame(self.notesFrame, self.notesList[self.notesIndex+1], 1)
-            note1.pack()
         if listMax > self.notesIndex + 2:
             note2 = self.createNoteFrame(self.notesFrame, self.notesList[self.notesIndex+2], 2)
-            note2.pack()
         if listMax > self.notesIndex + 3:
             note3 = self.createNoteFrame(self.notesFrame, self.notesList[self.notesIndex+3], 3)
-            note3.pack()
 
         self.window.update()
 
     def scrollDown(self):
+        """ Scrolls the list of notes down"""
         if len(self.notesList) > self.notesIndex + 4:
             self.notesIndex += 1
             self.updateNotesList()
 
     def scrollUp(self):
+        """ Scrolls the list of notes up"""
         if self.notesIndex > 0:
             self.notesIndex -= 1
             self.updateNotesList()
         
     def select0(self, event):
+        """ Binding method for helping select notes on list (using frames instead of buttons)"""
         self.selectNote(0)
 
     def select1(self, event):
+        """ Binding method for helping select notes on list (using frames instead of buttons)"""
         self.selectNote(1)
 
     def select2(self, event):
+        """ Binding method for helping select notes on list (using frames instead of buttons)"""
         self.selectNote(2)
 
     def select3(self, event):
+        """ Binding method for helping select notes on list (using frames instead of buttons)"""
         self.selectNote(3)
 
     def selectNote(self, index):
+        """ Selects or deselects note from list
+
+        index int : Index value of note to select. -1 for deselecting all.
+
+        returns None"""
         if index == -1:
             self.currentNote = None
             for box in self.notesFrame.winfo_children():
@@ -1125,7 +1430,8 @@ class TwoPaneGUI(AbstractGUI):
             self.window.update()
             return
         if self.currentNote is not None:
-            self.saveCurrentNote()
+            if not self.saveCurrentNote():
+                return
 
         for box in self.notesFrame.winfo_children():
             if(index == self.notesFrame.winfo_children().index(box)):
@@ -1134,7 +1440,7 @@ class TwoPaneGUI(AbstractGUI):
                 box.config(relief = GROOVE)
 
         self.currentNote = self.notesList[self.notesIndex + index]
-        #self.tagsEntry["state"] = NORMAL
+        #self.tagsEntry["state"] = NORMAL #TODO tags
         self.titleEntry["state"] = NORMAL
         self.textBox["state"] = NORMAL
         self.saveButton["state"] = NORMAL
@@ -1153,23 +1459,28 @@ class TwoPaneGUI(AbstractGUI):
         
 
     def show(self):
-        """Makes window re-appear if invisible. Does nothing if visible. 
+        """Makes window re-appear if invisible, and loads in Notes from current user into the GUI 
         Takes no input and returns None."""
+
         self.window.deiconify()
         self.notesList = self.noteManager.getNotes()
         self.updateNotesList()
     
     def hide(self):
+        """Makes window disappear if visible and deselects all notes"""
         super().hide()
         self.selectNote(-1)
 
     def getCurrentNote(self):   
+        """Returns note currently being used by GUI"""
         return self.currentNote
 
 class NoteDetailsGUI(AbstractGUI):
+    """This GUI is used dually by both TwoPaneGUI and CalendarGUI in order to show the full details of a note object."""
+
     def __init__(self, managerList, parent):
         super().__init__(managerList,parent)
-        self.window.geometry("400x700")
+        self.window.geometry("400x700+200+200")
         self.backTo = ""
         self.currentNote = None
 
@@ -1218,8 +1529,8 @@ class NoteDetailsGUI(AbstractGUI):
         tagLabel.pack(side = LEFT)
         self.tagEntry.pack(side = RIGHT, fill = X)
 
-        dateLabel = Label(dateFrame, text= "Date:")
-        self.dateEntry = Entry(dateFrame, state = DISABLED) #TODO enable
+        dateLabel = Label(dateFrame, text= "Date (yyyy-mm-dd):")
+        self.dateEntry = Entry(dateFrame)
         dateLabel.pack(side = LEFT)
         self.dateEntry.pack(side = RIGHT, fill = X)
 
@@ -1242,9 +1553,18 @@ class NoteDetailsGUI(AbstractGUI):
 
     def share():
         #TODO
+        print("ERROR: NoteDetailsGUI.share() should not have run")
         return
 
     def openNoteDetails(self, note, view):
+        """ This function is called by GUIManager in lieu of AbstractGUI.show() in order to load in note data and set
+            whether calendar or two pane view should be returned too on close.
+
+            note   Note : note object to load in
+            view   str  : string either "calendar" or "TwoPane"
+            
+            returns None
+        """
         self.backTo = view
         self.currentNote = note
 
@@ -1266,18 +1586,40 @@ class NoteDetailsGUI(AbstractGUI):
 
 
     def back(self):
-        self.save()
-        self.guiManager.openWindow(self.backTo)
+        """Saves and goes back to previous window
+
+        returns None"""
+        if self.save():
+            self.guiManager.openWindow(self.backTo)
         
 
     def save(self):
+        """ Grabs data from widgets and saves to note
+
+        returns True if successful and false Otherwise"""
+
+        if len(self.titleEntry.get()) > 32:
+            self.guiManager.popup("Title must be less than 32 characters")
+            return False
+        date = self.dateEntry.get()
+        if date != "":
+            if len(date) != 10:
+                self.guiManager.popup("Date must be a valid date in yyyy-mm-dd format (or blank)")
+                return False
+            try:
+                datetime.datetime.strptime(date,"%Y-%m-%d")
+            except ValueError:
+                self.guiManager.popup("Date must be a valid date in yyyy-mm-dd format (or blank)")
+                return False
         self.currentNote.setUpdate(True)
+
         self.currentNote.setTitle(self.titleEntry.get())
         self.currentNote.setTags(self.tagEntry.get())
         self.currentNote.setText(self.contentBox.get("1.0","end-1c"))
-        self.currentNote.setEvent(self.dateEntry.get())
+        self.currentNote.setEvent(date)
         self.currentNote.setImportance(self.priorityEntry.get())
         self.currentNote.setColor(self.colorEntry.get())
+        return True
 
 
 #Data Objects (model)
