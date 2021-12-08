@@ -672,6 +672,7 @@ class NoteManager(object):
         for note in self.noteList:
             if note.getOwner() == currentUser.getId():
                 userNotes.append(note)
+        userNotes.reverse()
         return userNotes
 
 
@@ -801,8 +802,11 @@ class PopupGUI(object):
         messageLabel.pack()
         okButton.pack()
 
-        self.window.bind("<FocusOut>", self.closePopup)
+        self.window.bind("<FocusOut>", self.closePopupEvent)
         self.window.focus_force()
+
+    def closePopupEvent(self, event):
+        self.closePopup()
 
     def closePopup(self):
         self.window.destroy()
@@ -974,8 +978,10 @@ class CalendarGUI(AbstractGUI):
         super().__init__(managerList,parent)
         self.window.geometry("800x600+200+200")
         self.today = datetime.datetime.now()
+        self.firstDayOnCal = self.today
         self.currentMonth = self.today.month
         self.currentYear = self.today.year
+
         
         self.notesList = [] #Notes available to the user
         self.widgetNoteDict = {}
@@ -989,8 +995,16 @@ class CalendarGUI(AbstractGUI):
         self.twoPaneImage = PhotoImage(file="list.gif")
         self.twoPaneImage = self.twoPaneImage.subsample(4)
         twoPaneButton = Button(topFrame, image = self.twoPaneImage, command = self.switchToListView)
+        backYearButton = Button(topFrame, text = "<<<", command = self.backYear)
+        backMonthButton = Button(topFrame, text = "<",command = self.backMonth)
+        forwardYearButton = Button(topFrame, text = ">>>", command = self.forwardYear)
+        forwardMonthButton = Button(topFrame, text = ">", command = self.forwardMonth)
 
         twoPaneButton.pack(side = RIGHT, anchor = "ne")
+        forwardYearButton.pack(side = RIGHT)
+        forwardMonthButton.pack(side = RIGHT)
+        backYearButton.pack(side = LEFT)
+        backMonthButton.pack(side = LEFT)
         self.calendarLabel.pack()
 
 
@@ -1026,9 +1040,10 @@ class CalendarGUI(AbstractGUI):
             if str(type(widg)) == "<class 'tkinter.Frame'>":
                 widg.destroy()
 
-        day = datetime.datetime.today().replace(day = 1)
+        day = datetime.datetime(self.currentYear, self.currentMonth, 1).replace(day = 1)
         while(day.strftime("%w") != "0"):
             day = day - datetime.timedelta(days = 1)
+        self.firstDayOnCal = day
 
 
         for i in range(35):
@@ -1039,11 +1054,29 @@ class CalendarGUI(AbstractGUI):
             self.dayFrames.append(dayFrame)
             day = day + datetime.timedelta(days = 1)
         
+    def newNote(self, event):
+        note = self.noteManager.generateNewNote()
+        dayOnCalIndex = self.dayFrames.index(event.widget)
+        day = self.firstDayOnCal
+        day = day + datetime.timedelta(days = dayOnCalIndex)
+        newNoteLabel = Label(event.widget, text = "Untitled", bd = 1, relief = GROOVE)
+        newNoteLabel.bind("<Double-Button-1>", self.doubleClickNoteLabel)
+        newNoteLabel.pack(side = TOP)
+        self.widgetNoteDict[newNoteLabel] = note
+        note.setEvent(day.strftime("%Y-%m-%d"))
+
+        self.currentNote = note
+        self.updateCalendarFrame()
+        self.guiManager.openNoteDetails()
+
+        
+
 
     def createDayFrame(self, day, index):
         dayNumber = day.strftime("%d")
         dayText = day.strftime("%Y-%m-%d")
         dayFrame = Frame(self.calendarFrame, relief = RIDGE, bd = 2)
+        dayFrame.bind("<Double-Button-1>", self.newNote)
         numberLabel = Label(dayFrame, text = dayNumber)
         numberLabel.pack(side = BOTTOM, anchor = "se")
 
@@ -1056,12 +1089,23 @@ class CalendarGUI(AbstractGUI):
                 if title == "":
                     title = "Untitled"
                 noteLabel = Label(dayFrame, text = title, bd = 1, relief = GROOVE)
+                noteColor = note.getColor()
+                if noteColor == "red":
+                    noteLabel["bg"] = "#FFAAAA"
+                elif noteColor == "blue":
+                    noteLabel["bg"] = "#AAAAFF"
+                elif noteColor == "green":
+                    noteLabel["bg"] = "#AAFFAA"
+                elif noteColor == "yellow":
+                    noteLabel["bg"] = "#FFFF99"
+                elif noteColor == "purple":
+                    noteLabel["bg"] = "#BB99FF"
                 noteLabel.bind("<Double-Button-1>", self.doubleClickNoteLabel)
                 noteLabel.pack(side = TOP)
                 self.widgetNoteDict[noteLabel] = note
-
-
         return dayFrame
+
+
     def getCurrentNote(self):
         return self.currentNote
 
@@ -1078,6 +1122,36 @@ class CalendarGUI(AbstractGUI):
 
     def switchToListView(self):
         self.guiManager.openWindow("twoPane")
+
+    def updateMonthLabel(self):
+        self.calendarLabel["text"] = datetime.datetime(self.currentYear,self.currentMonth,1).strftime("%B '%y")
+        
+
+    def backYear(self):
+        self.currentYear -= 1
+        self.updateMonthLabel()
+        self.updateCalendarFrame()
+
+    def backMonth(self):
+        self.currentMonth -= 1
+        if self.currentMonth == 0:
+            self.currentMonth = 12
+            self.currentYear -= 1
+        self.updateMonthLabel()
+        self.updateCalendarFrame()
+
+    def forwardYear(self):
+        self.currentYear += 1
+        self.updateMonthLabel()
+        self.updateCalendarFrame()
+    
+    def forwardMonth(self):
+        self.currentMonth += 1
+        if self.currentMonth == 13:
+            self.currentMonth = 1
+            self.currentYear += 1
+        self.updateMonthLabel()
+        self.updateCalendarFrame()
         
         
 
@@ -1098,6 +1172,22 @@ class TwoPaneGUI(AbstractGUI):
         self.notesList = []
         self.notesIndex = 0
         self.currentNote = None
+        #top Bar (please don't mess up)
+        barFrame = Frame(self.window, width = 800, height = 20)
+        barFrame.pack_propagate(False)
+        barFrame.pack(side=TOP)
+
+        listViewFrame = Frame(barFrame, width = 400, height = 20)
+        calendarViewFrame = Frame(barFrame, width = 400, height = 20, bd = 3, relief = RAISED)
+        calendarViewFrame.pack_propagate(True)
+        listViewFrame.pack(side=LEFT)
+        calendarViewFrame.pack(side=RIGHT)
+
+        switchLabel = Label(calendarViewFrame, text = "Calendar")
+        switchLabel.pack()
+        switchLabel.bind("<Button-1>",self.openCalendarView)
+        calendarViewFrame.bind("<Button-1>",self.openCalendarView)
+
 
         #outer frames
         leftFrame = Frame(self.window, bg = "red", width = 400)
@@ -1156,6 +1246,10 @@ class TwoPaneGUI(AbstractGUI):
             returns None"""
         self.userManager.logout()
         self.guiManager.openWindow("login")
+    
+    def openCalendarView(self, event):
+        self.saveCurrentNote()
+        self.guiManager.openWindow("calendar")
 
     def openNoteDetails(self):
         """ Opens GUI with currently selected note's details
@@ -1167,6 +1261,8 @@ class TwoPaneGUI(AbstractGUI):
             returns False if successful (with popup) and True otherwise"""
         if len(self.titleEntry.get()) > 32:
             self.guiManager.popup("Title must be 32 characters or less")
+            return False
+        if self.currentNote == None:
             return False
 
         self.currentNote.setText(self.textBox.get("1.0", "end-1c"))
@@ -1492,6 +1588,9 @@ class NoteDetailsGUI(AbstractGUI):
             return False
         date = self.dateEntry.get()
         if date != "":
+            if len(date) != 10:
+                self.guiManager.popup("Date must be a valid date in yyyy-mm-dd format (or blank)")
+                return False
             try:
                 datetime.datetime.strptime(date,"%Y-%m-%d")
             except ValueError:
