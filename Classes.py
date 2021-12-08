@@ -223,7 +223,7 @@ class DatabaseManager(object):
             else:
                 notedata.append(None)
 
-            self.noteManager.addNote(note[0], note[1], notedata[0], notedata[1], note[4], note[5], note[6], note[7], note[8], note[9])
+            self.noteManager.addNote(note[0], note[1], notedata[0], notedata[1], note[4], notedata[2], note[6], note[7], note[8], note[9])
         for note in self.noteManager.noteList:
             #Connect tags with their notes
             for tag in load2:
@@ -351,8 +351,8 @@ class DatabaseManager(object):
         delete_notetag=("DELETE FROM tags WHERE note_id = %s")
         remove_tag = ("DELETE FROM tags WHERE tag_id = %s AND note_id = %s")
         add_tag = ("INSERT INTO tags"
-                   "(tag_id, tag_text, note_id)"
-                   "VALUES (%s, %s, %s)")
+                   "(tag_id, tag_text, note_id) "
+                   "VALUES (%s, %s, %s) ")
         update_notedata = ("UPDATE notes "
                         "SET notedata = %s "
                         "WHERE note_id = %s")
@@ -365,6 +365,10 @@ class DatabaseManager(object):
         update_noteimportance = ("UPDATE notes "
                               "SET import = %s "
                               "WHERE note_id = %s")
+        update_noteEventDate = ("UPDATE notes "
+                                "SET date = %s "
+                                "WHERE note_id = %s")
+        update_noteTitle = ("UPDATE notes SET title = %s WHERE note_id = %s")
         add_note = ("INSERT INTO notes"
                         "(note_id, user_id, date_made, lastmod, notedata, date, import, title, color, repeating)"
                         "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)")
@@ -423,6 +427,8 @@ class DatabaseManager(object):
             self.cursor.execute(update_notedate, (note.getModified(), note.getId()))
             self.cursor.execute(update_notecolor,( note.getColor(), note.getId()))
             self.cursor.execute(update_noteimportance, (note.getImportance(), note.getId()))
+            self.cursor.execute(update_noteEventDate, (note.getEvent(), note.getId()))
+            self.cursor.execute(update_noteTitle, (note.getTitle(), note.getId()))
         
     def saveGroups(self, group):
         """Saves all data concerning groups to the database"""
@@ -709,6 +715,7 @@ class GUIManager(object):
         self.guiDict["register"] = RegisterGUI(self.managerList, self.root)
         self.guiDict["home"] = HomeGUI(self.managerList, self.root)
         self.guiDict["twoPane"] = TwoPaneGUI(self.managerList, self.root)
+        self.guiDict["calendar"] = CalendarGUI(self.managerList, self.root)
 
         self.openWindow("login")
         self.noteDetails = NoteDetailsGUI(self.managerList, self.root)
@@ -916,6 +923,9 @@ class HomeGUI(AbstractGUI):
         twoPaneViewButton = Button(self.window, text = "two pane view", command = self.openTwoPane)
         twoPaneViewButton.pack()
 
+        calendarViewButton = Button(self.window, text = "calendar view", command = self.openCalendar)
+        calendarViewButton.pack()
+
         #menu
         self.menuBar = Menu(self.window)
         self.window["menu"] = self.menuBar
@@ -924,8 +934,12 @@ class HomeGUI(AbstractGUI):
         self.menuBar.add_cascade(label = "User", menu = userMenu)
         userMenu.add_command(label = 'Logout', command = self.backToLogin)
         self.menuBar.entryconfig("User", state = DISABLED)
+
     def openTwoPane(self):
         self.guiManager.openWindow("twoPane")
+
+    def openCalendar(self):
+        self.guiManager.openWindow("calendar")
 
     def show(self):
         super().show()
@@ -959,6 +973,122 @@ class CalendarGUI(AbstractGUI):
     def __init__(self, managerList, parent):
         super().__init__(managerList,parent)
         self.window.geometry("800x600+200+200")
+        self.today = datetime.datetime.now()
+        self.currentMonth = self.today.month
+        self.currentYear = self.today.year
+        
+        self.notesList = [] #Notes available to the user
+        self.widgetNoteDict = {}
+        self.dayFrames = [] # the 35 frames for all the days
+
+        #This is gonna be a nightmare
+        topFrame = Frame(self.window)
+        bottomFrame = Frame(self.window)
+        #Top Frame Stuff
+        self.calendarLabel = Label(topFrame, text = self.today.strftime("%B '%y"), font=("TkDefaultFont", 24))
+        self.twoPaneImage = PhotoImage(file="list.gif")
+        self.twoPaneImage = self.twoPaneImage.subsample(4)
+        twoPaneButton = Button(topFrame, image = self.twoPaneImage, command = self.switchToListView)
+
+        twoPaneButton.pack(side = RIGHT, anchor = "ne")
+        self.calendarLabel.pack()
+
+
+        #Bottom Frame stuff
+
+        self.calendarFrame = Frame(bottomFrame)
+
+        topFrame.pack(side = TOP, fill = BOTH)
+        bottomFrame.pack(side = BOTTOM, fill = BOTH, expand = True)
+        self.calendarFrame.pack(side = RIGHT, fill = BOTH, expand = True)
+
+        self.undatedColumn = Frame(bottomFrame)
+        self.undatedColumn.pack(side = LEFT, fill = Y)
+
+        for i in range(7):
+            days = ["S","M","T","W","T","F","S"]
+            dayLabel = Label(self.calendarFrame, text = days[i])
+            dayLabel.place(y = 0, relx = i * 1/7 + 1/15)
+            #dayLabel.grid(row = 0, column = i,)
+
+    def logout(self):
+        """Logs the user out and goes back to first window
+            returns None"""
+        self.userManager.logout()
+        self.guiManager.openWindow("login")
+
+    
+    def updateCalendarFrame(self):
+        self.widgetNoteDict = {}
+        self.dayFrames = []
+
+        for widg in self.calendarFrame.winfo_children():
+            if str(type(widg)) == "<class 'tkinter.Frame'>":
+                widg.destroy()
+
+        day = datetime.datetime.today().replace(day = 1)
+        while(day.strftime("%w") != "0"):
+            day = day - datetime.timedelta(days = 1)
+
+
+        for i in range(35):
+            dayList = []
+            dayFrame = self.createDayFrame(day, i)
+            #TODO grid
+            dayFrame.place(relwidth = 1/7, relheight = .19, relx = (i%7)*(1/7), rely = ((i//7) * 1/5) * .95 + .05)
+            self.dayFrames.append(dayFrame)
+            day = day + datetime.timedelta(days = 1)
+        
+
+    def createDayFrame(self, day, index):
+        dayNumber = day.strftime("%d")
+        dayText = day.strftime("%Y-%m-%d")
+        dayFrame = Frame(self.calendarFrame, relief = RIDGE, bd = 2)
+        numberLabel = Label(dayFrame, text = dayNumber)
+        numberLabel.pack(side = BOTTOM, anchor = "se")
+
+        for note in self.notesList:
+            if note.getEvent() == None:
+                continue
+                #TODO make sure I know how to use continue
+            if dayText in note.getEvent():
+                title = note.getTitle()
+                if title == "":
+                    title = "Untitled"
+                noteLabel = Label(dayFrame, text = title, bd = 1, relief = GROOVE)
+                noteLabel.bind("<Double-Button-1>", self.doubleClickNoteLabel)
+                noteLabel.pack(side = TOP)
+                self.widgetNoteDict[noteLabel] = note
+
+
+        return dayFrame
+    def getCurrentNote(self):
+        return self.currentNote
+
+    def clickNoteLabel(self, event):
+        #TODO
+        return
+
+    def doubleClickNoteLabel(self, event):
+        labelClicked = event.widget
+        self.currentNote = self.widgetNoteDict[labelClicked]
+        self.guiManager.openNoteDetails()
+
+        return
+
+    def switchToListView(self):
+        self.guiManager.openWindow("twoPane")
+        
+        
+
+    def show(self):
+        """Makes window re-appear if invisible, and loads in Notes from current user into the GUI 
+        Takes no input and returns None."""
+
+        self.window.deiconify()
+        self.notesList = self.noteManager.getNotes()
+        self.updateCalendarFrame()
+        
 
 class TwoPaneGUI(AbstractGUI):
     """GUI Class for the Two Pane View / List View in VirtualPDA"""
@@ -1356,7 +1486,6 @@ class NoteDetailsGUI(AbstractGUI):
         """ Grabs data from widgets and saves to note
 
         returns True if successful and false Otherwise"""
-        self.currentNote.setUpdate(True)
 
         if len(self.titleEntry.get()) > 32:
             self.guiManager.popup("Title must be less than 32 characters")
@@ -1364,10 +1493,11 @@ class NoteDetailsGUI(AbstractGUI):
         date = self.dateEntry.get()
         if date != "":
             try:
-                datetime.datetime.strptime(date,"%Y-%m-d")
+                datetime.datetime.strptime(date,"%Y-%m-%d")
             except ValueError:
                 self.guiManager.popup("Date must be a valid date in yyyy-mm-dd format (or blank)")
                 return False
+        self.currentNote.setUpdate(True)
 
         self.currentNote.setTitle(self.titleEntry.get())
         self.currentNote.setTags(self.tagEntry.get())
