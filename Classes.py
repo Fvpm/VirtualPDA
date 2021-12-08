@@ -191,13 +191,17 @@ class DatabaseManager(object):
         self.cursor.execute(loadusers)
         load = self.cursor.fetchall()
         for user in load:
-            if type(user[0]) is not int:
-                user[0] = int(user[0])
-            if type(user[1]) is not str:
-                user[1] = str(user[1])
-            if type(user[2]) is not str:
-                user[2] = str(user[2])
-            self.userManager.addUser(user[0], user[1], user[2])
+            userdata = []
+            userdata.append(user[0])
+            userdata.append(user[1])
+            userdata.append(user[2])
+            if type(userdata[0]) is not int:
+                userdata[0] = int(userdata[0])
+            if type(userdata[1]) is not str:
+                userdata[1] = str(userdata[1])
+            if type(userdata[2]) is not str:
+                userdata[2] = str(userdata[2])
+            self.userManager.addUser(userdata[0], userdata[1], userdata[2])
 
     def loadNotes(self):
         """Will load database data into self.noteManager"""
@@ -226,18 +230,22 @@ class DatabaseManager(object):
             #Connect tags with their notes
             for tag in load2:
                 if tag[0] == note.getId():
-                    if type(tag[0]) is not int:
-                        tag[0] = int(tag[0])
-                    if type(tag[1]) is not str:
-                        tag[1] = str(tag[1])
-                    note.addTag([tag[0], tag[1]])
+                    tagdata = []
+                    tagdata.append(tag[0])
+                    tagdata.append(tag[1])
+                    if type(tagdata[0]) is not int:
+                        tagdata[0] = int(tagdata[0])
+                    if type(tagdata[1]) is not str:
+                        tagdata[1] = str(tagdata[1])
+                    note.addTag([tagdata[0], tagdata[1]])
             note.fillOldTags()
             #Connect notes with users that can see them
             for con in load3:
                 if con[1] == note.getId():
-                    if type(con[0]) is not int:
-                        con[0] = int(con[0])
-                    note.share(con[0])
+                    condata = con[0]
+                    if type(condata) is not int:
+                        condata = int(condata)
+                    note.share(condata)
         
 
     def loadGroups(self):
@@ -254,29 +262,36 @@ class DatabaseManager(object):
         self.cursor.execute(loadnotes)
         load3 = self.cursor.fetchall()
         for group in load:
-            if type(group[0]) is not int:
-                group[0] = int(group[0])
-            if type(group[1]) is not str:
-                group[1] = str(group[1])
-            if type(group[2]) is not str:
-                group[2] = str(group[2])
-            if type(group[3]) is not int:
-                group[3] = int(group[3])
-            self.groupManager.addGroup(group[0], group[1], group[2], group[3])
+            groupdata = []
+            groupdata.append(group[0])
+            groupdata.append(group[1])
+            groupdata.append(group[2])
+            groupdata.append(group[3])
+            if type(groupdata[0]) is not int:
+                groupdata[0] = int(groupdata[0])
+            if type(groupdata[1]) is not str:
+                groupdata[1] = str(groupdata[1])
+            if type(groupdata[2]) is not str:
+                groupdata[2] = str(groupdata[2])
+            if type(groupdata[3]) is not int:
+                groupdata[3] = int(groupdata[3])
+            self.groupManager.addGroup(groupdata[0], groupdata[1], groupdata[2], groupdata[3])
         #Connect the groups with their members
         for group in self.groupManager.groupList:
             for user in load2:
                 if user[1] == group.getId():
-                    if type(user[0]) is not int:
-                        user[0] = int(user[0])
-                    group.addUser(user[0])
+                    userdata = user[0]
+                    if type(userdata) is not int:
+                        userdata = int(userdata)
+                    group.addUser(userdata)
             group.fillOldMembers()
             #Connect the groups with their notes
             for note in load3:
                 if note[0] == group.getId():
-                    if type(note[1]) is not int:
-                        note[1] = int(note[1])
-                    group.addNote(note[1])
+                    notedata = note[1]
+                    if type(notedata) is not int:
+                        notedata = int(notedata)
+                    group.addNote(notedata)
             group.fillOldNotes()
     
     def saveDatabase(self):
