@@ -397,9 +397,9 @@ class DatabaseManager(object):
         elif note.getMark() == True:
             #If the note has been marked for deletion then delete everything having to do with it in database
             ident = (note.getId(), )
+            self.cursor.execute(delete_noteuser, ident)
             self.cursor.execute(delete_note, ident)
             self.cursor.execute(delete_notegroup, ident)
-            self.cursor.execute(delete_noteuser, ident)
             self.cursor.execute(delete_notetag, ident)
         elif note.getUpdate() == True:
             #If note has been updated then update the database as well
@@ -685,7 +685,7 @@ class NoteManager(object):
         userNotes = []
         currentUser = self.userManager.getCurrentUser()
         for note in self.noteList:
-            if note.getOwner() == currentUser.getId():
+            if note.getOwner() == currentUser.getId() and note.getMark() == False:
                 userNotes.append(note)
         userNotes.reverse()
         return userNotes
@@ -1075,7 +1075,7 @@ class CalendarGUI(AbstractGUI):
         day = self.firstDayOnCal
         day = day + datetime.timedelta(days = dayOnCalIndex)
         newNoteLabel = Label(event.widget, text = "Untitled", bd = 1, relief = GROOVE)
-        newNoteLabel.bind("<Double-Button-1>", self.doubleClickNoteLabel)
+        newNoteLabel.bind("<Button-1>", self.doubleClickNoteLabel)
         newNoteLabel.pack(side = TOP)
         self.widgetNoteDict[newNoteLabel] = note
         note.setEvent(day.strftime("%Y-%m-%d"))
@@ -1205,9 +1205,9 @@ class TwoPaneGUI(AbstractGUI):
 
 
         #outer frames
-        leftFrame = Frame(self.window, bg = "red", width = 400)
+        leftFrame = Frame(self.window,  width = 400)
         leftFrame.pack_propagate(False)
-        self.infoFrame = Frame(self.window, bg = "blue", width = 400)
+        self.infoFrame = Frame(self.window,  width = 400)
 
         leftFrame.pack(side = LEFT, fill = BOTH)
         self.infoFrame.pack(side= RIGHT, fill = BOTH)
@@ -1230,14 +1230,16 @@ class TwoPaneGUI(AbstractGUI):
         titleFrame.pack_propagate(False)
         tagFrame = Frame(self.infoFrame, width = 400, height = 20)
         tagFrame.pack_propagate(False)
-        textBoxFrame = Frame(self.infoFrame, width = 400, height = 500)
+        textBoxFrame = Frame(self.infoFrame, width = 400, height = 480)
         textBoxFrame.pack_propagate(False)
         self.saveButton = Button(self.infoFrame,text = "save", command = self.saveCurrentNote, state = DISABLED)
+        self.deleteButton = Button(self.infoFrame,text = "delete", command = self.deleteCurrentNote, state = DISABLED)
 
         titleFrame.pack(side=TOP)
         tagFrame.pack(side=TOP)
         textBoxFrame.pack(side=TOP)
         self.saveButton.pack(side=BOTTOM, fill = X)
+        self.deleteButton.pack(side=BOTTOM, anchor = "se")
 
         #right subwidgets
         titleLabel = Label(titleFrame, text = "Title:")
@@ -1255,6 +1257,13 @@ class TwoPaneGUI(AbstractGUI):
         self.textBox = Text(textBoxFrame, state = DISABLED)
         self.textBox.pack(fill = BOTH, expand = True)
 
+    def deleteCurrentNote(self):
+        self.currentNote.setMark()
+        self.notesList.remove(self.currentNote)
+        self.updateNotesList()
+        self.selectNote(-1)
+        return True
+
 
     def logout(self):
         """Logs the user out and goes back to first window
@@ -1269,6 +1278,7 @@ class TwoPaneGUI(AbstractGUI):
     def openNoteDetails(self):
         """ Opens GUI with currently selected note's details
             returns None"""
+        self.saveCurrentNote()
         self.guiManager.openNoteDetails()
 
     def saveCurrentNote(self):
@@ -1426,6 +1436,7 @@ class TwoPaneGUI(AbstractGUI):
             self.titleEntry["state"] = DISABLED
             self.textBox["state"] = DISABLED
             self.saveButton["state"] = DISABLED
+            self.deleteButton["state"] = DISABLED
             self.detailsButton["state"] = DISABLED
             self.window.update()
             return
@@ -1444,6 +1455,7 @@ class TwoPaneGUI(AbstractGUI):
         self.titleEntry["state"] = NORMAL
         self.textBox["state"] = NORMAL
         self.saveButton["state"] = NORMAL
+        self.deleteButton["state"] = NORMAL
         self.detailsButton["state"] = NORMAL
 
         self.textBox.delete("1.0", END)
@@ -1453,9 +1465,6 @@ class TwoPaneGUI(AbstractGUI):
         self.tagsEntry.delete(0, END)
         self.titleEntry.insert(0, self.currentNote.getTags())
 
-        self.tagsEntry
-
-        self.window.update()
         
 
     def show(self):
@@ -1659,7 +1668,7 @@ class DataObjects(object):
         """Changes the update value"""
         self.update = change
         
-    def setMark(self: bool):
+    def setMark(self):
         """Changes the mark value to true since user has to go through a confirmation process before they want something deleted"""
         self.mark = True
         
