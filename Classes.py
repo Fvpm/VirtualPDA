@@ -137,7 +137,7 @@ class DatabaseManager(object):
             " `name` varchar(30),"
             " `description` varchar(180),"
             " `user_id` int(12),"
-            " `public` boolean,"
+            " `privacy` boolean,"
             " PRIMARY KEY(`group_id`),"
             " FOREIGN KEY(`user_id`) REFERENCES `users` (`user_id`)"
             ") ENGINE=InnoDB")
@@ -269,6 +269,7 @@ class DatabaseManager(object):
             groupdata.append(group[1])
             groupdata.append(group[2])
             groupdata.append(group[3])
+            groupdata.append(group[4])
             if type(groupdata[0]) is not int:
                 groupdata[0] = int(groupdata[0])
             if type(groupdata[1]) is not str:
@@ -277,7 +278,9 @@ class DatabaseManager(object):
                 groupdata[2] = str(groupdata[2])
             if type(groupdata[3]) is not int:
                 groupdata[3] = int(groupdata[3])
-            self.groupManager.addGroup(groupdata[0], groupdata[1], groupdata[2], groupdata[3])
+            if type(groupdata[4]) is not int:
+                groupdata[4] = int(groupdata[4])
+            self.groupManager.addGroup(groupdata[0], groupdata[1], groupdata[2], groupdata[3], groupdata[4])
         #Connect the groups with their members
         for group in self.groupManager.groupList:
             for user in load2:
@@ -474,7 +477,7 @@ class DatabaseManager(object):
                        "WHERE group_id = %s")
         if group.getNew() == True:
             #If the group is new add it to the database
-            self.cursor.execute(new_group, group.getId(), group.getName(), group.getDescription(), group.getOwner(), group.getPrivacy())
+            self.cursor.execute(new_group, (group.getId(), group.getName(), group.getDescription(), group.getOwner(), group.getPrivacy()))
             for member in group.getMembers():
                 self.cursor.execute(add_groupmem, group.getId(), member)
         elif group.getMark() == True:
@@ -704,16 +707,34 @@ class GroupManager(object):
     def userJoinGroup(self, user, group):
         """Adds a user to a group"""
         self.userManager.userJoinGroup(user,group)
-    def addGroup(self, groupId, groupname, description, owner):
+    def addGroup(self, groupId, groupname, description, owner, privacy):
         "Adds a group to the group list so it can be kept track of"
         if groupId >= self.nextId:
             self.nextId = groupId + 1
-        newGroup = Group(groupId, groupname, description, owner)
+        newGroup = Group(groupId, groupname, description, owner, privacy)
         self.groupList.append(newGroup)
     def generateNewGroup(self):
         newGroup = Group(self.nextId, "", "", self.userManager.getCurrentUser().getId())
+        self.nextId += 1
         self.groupList.append(newGroup)
+        newGroup.setNew(True)
         return newGroup
+
+    def getJoinedGroups(self):
+        currentUser = self.userManager.getCurrentUser()
+        joinedGroups = []
+        for group in self.groupList:
+            if group.hasMember(currentUser):
+                joinedGroups.append(group)
+        return joinedGroups
+
+    def getPublicGroups(self):
+        joinedGroups = self.getJoinedGroups()
+        publicGroups = []
+        for group in self.groupList:
+            if (not group.getPrivacy()) and (group not in joinedGroups):
+                publicGroups.append(group)
+        return publicGroups
 
     def isNameTaken(self, groupName):
         for group in self.groupList:
@@ -785,7 +806,7 @@ class GUIManager(object):
     def openGroupDetails(self):
         """Opens the GroupDetailGUI, grabbing appropriate information from group GUI"""
         currentGroup = self.currentWindow.getCurrentGroup()
-        self.currentWindow.gide()
+        self.currentWindow.hide()
         self.currentWindow = self.groupDetails
         self.currentWindow.openGroupDetails(currentGroup)
         
@@ -872,7 +893,7 @@ class LoginGUI(AbstractGUI):
         """Creates the window and all its widgets."""
         super().__init__(managerList, parent)
 
-        self.window.geometry("600x400+100+100")
+        self.window.geometry("400x200+100+100")
 
         buttonFrame = Frame(master=self.window, height=150)
         buttonFrame.pack(fill=BOTH, side=BOTTOM, expand=True)
@@ -920,7 +941,7 @@ class LoginGUI(AbstractGUI):
 class RegisterGUI(AbstractGUI):
     def __init__(self, managerList, parent):
         super().__init__(managerList, parent)
-        self.window.geometry("400x300+100+100")
+        self.window.geometry("400x220+100+100")
         
         backButton = Button(self.window, text = "<-", command = self.backToLogin)
         backButton.pack(side = TOP, anchor = "nw")
@@ -1488,8 +1509,7 @@ class TwoPaneGUI(AbstractGUI):
     def show(self):
         """Makes window re-appear if invisible, and loads in Notes from current user into the GUI 
         Takes no input and returns None."""
-
-        self.window.deiconify()
+        super().show()
         self.notesList = self.noteManager.getNotes()
         self.updateNotesList()
     
@@ -1653,6 +1673,11 @@ class NoteDetailsGUI(AbstractGUI):
 class GroupsGUI(AbstractGUI):
     def __init__(self, managerList, parent):
         super().__init__(managerList,parent)
+        
+        self.userGroups = []
+        self.publicGroups = []
+        self.userList = []
+
         self.window.geometry("800x600+100+100")
         
         topBarFrame = Frame(self.window, height = 40, width = 800)
@@ -1756,9 +1781,28 @@ class GroupsGUI(AbstractGUI):
     def selectPublicGroup(self, event):
         pass    
 
+    def getCurrentGroup(self):
+        return self.currentGroup
+
+    def show(self):
+        super().show()
+        self.updateGroupLists()
+
+    def updateGroupLists(self):
+        self.userGroups = self.groupManager.getJoinedGroups()
+        self.publicGroups = self.groupManager.getPublicGroups()
+        for i in range(len(self.userGroups)):
+            self.myGroupsListbox.insert(i, self.userGroups[i].getName())
+        for i in range(len(self.publicGroups)):
+            self.publicGroupsListbox.insert(i, self.publicGroups[i].getName())
+
+
     def createNewGroup(self):
-        self.groupManager.
-        pass
+        newGroup = self.groupManager.generateNewGroup()
+        self.userGroups.append(newGroup)
+        self.currentGroup = newGroup
+        self.guiManager.openWindow("groupDetails")
+
 
     def backToHome(self):
         pass
@@ -1799,7 +1843,7 @@ class GroupDetailsGUI(AbstractGUI):
 
     def saveAndBack(self):
         if self.save():
-            self.guiManager.open("groups")
+            self.guiManager.openWindow("groups")
 
     def save(self):
         name = self.nameEntry.get()
@@ -2086,14 +2130,14 @@ class User(DataObjects):
         self.notes.remove(note)
 
 class Group(DataObjects):
-    def __init__(self, _id, _groupname, _desc, _own):
+    def __init__(self, _id, _groupname, _desc, _own, _privacy):
         """Precondition: _id is not 0. _owner is not 0
         Postcondition: Group object is initialized"""
         super().__init__(_id)
         self.name = _groupname
         self.description = _desc
         self.owner = _own
-        self.isPrivate = True
+        self.isPrivate = _privacy
         self.members = [_own]
         self.oldMembers = []
         self.notes = []
@@ -2103,15 +2147,21 @@ class Group(DataObjects):
         """Adds a user to the list of users in the group"""
         self.members.append(newuser)
         
-    def editDesc(self, newdesc):
+    def setDescription(self, newdesc):
         """Edits the description of the group"""
         self.description = newdesc
+
+    def hasMember(self, user):
+        if user.getId() in self.members:
+            return True
+        return False
+
         
     def remUser(self, memind):
         """Removes a user from the group"""
         self.members.remove(memind)
         
-    def editName(self, newname):
+    def setName(self, newname):
         """Edits the name of the group"""
         self.name = newname
         
@@ -2126,6 +2176,9 @@ class Group(DataObjects):
             self.isPrivate == False
         else:
             self.isPrivate == True
+
+    def setPrivacy(self, private):
+        self.isPrivate = private
             
     def addNote(self, note):
         """Adds notes to the group note list"""
@@ -2171,6 +2224,7 @@ class Group(DataObjects):
     def setMembers(self, nMembers):
         """Changes the member list of the group"""
         self.members = nMembers
+
 
 def main():
     dbManager = DatabaseManager()
