@@ -304,20 +304,20 @@ class DatabaseManager(object):
         """Precondition: There is data to be saved
         Postcondition: Data should be loaded from program into the database"""
         #Cycle through and save all users
-        for User in self.userManager.userList:
-            self.saveUsers(User)
-            User.setNew(False)
-            User.setUpdate(False)
+        for user in self.userManager.userList:
+            self.saveUsers(user)
+            user.setNew(False)
+            user.setUpdate(False)
         #Cycle through and save all notes
-        for Note in self.noteManager.noteList:
-            self.saveNotes(Note)
-            Note.setNew(False)
-            Note.setUpdate(False)
+        for note in self.noteManager.noteList:
+            self.saveNotes(note)
+            note.setNew(False)
+            note.setUpdate(False)
         #Cycle through and save all groups
-        for Group in self.groupManager.groupList:
-            self.saveGroups(Group)
-            Group.setNew(False)
-            Group.setUpdate(False)
+        for group in self.groupManager.groupList:
+            self.saveGroups(group)
+            group.setNew(False)
+            group.setUpdate(False)
         #Commit changes made to the database
         self.database.commit()
         
@@ -452,14 +452,14 @@ class DatabaseManager(object):
         """Saves all data concerning groups to the database"""
         """Precondition: Group ID is not 0. Group ID and User ID are 12 digits long at max. Name is 30 characters long at max. Description is 180 characters long at max.
         Postcondition: Group data should be saved to the database"""
-        new_group = ("INSERT INTO usergroups"
-                     "(group_id, name, description, user_id, privacy)"
+        new_group = ("INSERT INTO usergroups "
+                     "(group_id, name, description, user_id, privacy) "
                      "VALUES (%s, %s, %s, %s, %s)")
-        add_groupmem = ("INSERT INTO groupmem"
-                        "(group_id, user_id)"
+        add_groupmem = ("INSERT INTO groupmem "
+                        "(group_id, user_id) "
                         "VALUES (%s, %s)")
-        add_groupcon = ("INSERT INTO groupcon"
-                        "(group_id, note_id)"
+        add_groupcon = ("INSERT INTO groupcon "
+                        "(group_id, note_id) "
                         "VALUES (%s, %s)")
         delete_group = ("DELETE FROM usergroups WHERE group_id = %s")
         delete_groupmem=("DELETE FROM groupmem WHERE group_id = %s")
@@ -467,7 +467,7 @@ class DatabaseManager(object):
         delete_groupnotes=("DELETE FROM groupcon WHERE group_id = %s")
         modify_privacy = ("UPDATE usergroups "
                        "SET privacy = %s "
-                       "WHERE group_id = %s")
+                       "WHERE group_id = %s ")
         modify_name = ("UPDATE usergroups "
                        "SET name = %s "
                        "WHERE group_id = %s")
@@ -480,34 +480,20 @@ class DatabaseManager(object):
             self.cursor.execute(new_group, (group.getId(), group.getName(), group.getDescription(), group.getOwner(), group.getPrivacy()))
             for member in group.getMembers():
                 self.cursor.execute(add_groupmem, group.getId(), member)
-        elif group.getMark() == True:
-            #If the group is marked for deletion, delete everything related to the group from the database
-            ident = (group.getId, )
-            self.cursor.execute(delete_group, ident)
-            self.cursor.execute(delete_groupmem, ident)
-            self.cursor.execute(delete_groupnotes, ident)
         elif group.getUpdate() == True:
             #If the group is set to be updated then update the information related to it in the database
-            self.cursor.execute(modify_desc, group.getDescription(), group.getId())
-            self.cursor.execute(modify_name, group.getName(), group.getId())
-            self.cursor.execute(modify_privacy, group.getPrivacy(), group.getId())
+            self.cursor.execute(modify_desc, (group.getDescription(), group.getId()))
+            self.cursor.execute(modify_name, (group.getName(), group.getId()))
+            self.cursor.execute(modify_privacy,( group.getPrivacy(), group.getId()))
             oldmembers = group.getOldMembers()
             members = group.getMembers()
             #Check if new member have been added to the group
             for member in members:
-                count = 0
-                for oldmember in oldmembers:
-                    if member == oldmember:
-                        count += 1
-                if count == 0:
-                    self.cursor.execute(add_groupmem, group.getId(), member)
+                if member not in oldmembers:
+                    self.cursor.execute(add_groupmem, (group.getId(), member))
             #Check if members have been removed from the group
             for oldmember in oldmembers:
-                count = 0
-                for member in members:
-                    if oldmember == member:
-                        count += 1
-                if count == 0:
+                if oldmember not in members:
                     memident = (oldmember, group.getId())
                     self.cursor.execute(remove_user, memident)
             
@@ -520,7 +506,7 @@ class DatabaseManager(object):
                     if note == oldnote:
                         count += 1
                 if count == 0:
-                    self.cursor.execute(add_groupcon, group.getId(), note)
+                    self.cursor.execute(add_groupcon, (group.getId(), note))
             #Check if notes have been removed from the group
             for oldnote in oldnotes:
                 count = 0
@@ -530,6 +516,12 @@ class DatabaseManager(object):
                 if count == 0:
                     noteident = (group.getId(), oldnote)
                     self.cursor.execute(delete_groupnote, noteident)               
+        if group.getMark() == True:
+            #If the group is marked for deletion, delete everything related to the group from the database
+            ident = (group.getId, )
+            self.cursor.execute(delete_group, ident)
+            self.cursor.execute(delete_groupmem, ident)
+            self.cursor.execute(delete_groupnotes, ident)
             
 
 class UserManager(object):
@@ -614,6 +606,20 @@ class UserManager(object):
 
         returns user object"""
         return self.currentUser
+
+    def getNonMembers(self, members):
+        nonMembers = []
+        for user in self.userList:
+            if user.getId() not in members:
+                nonMembers.append(user)
+        return nonMembers
+
+    def getUserById(self, userId):
+        for user in self.userList:
+            if user.getId() == userId:
+                return user
+        return False
+        
 
     def logout(self):
         self.currentUser = None
@@ -736,9 +742,9 @@ class GroupManager(object):
                 publicGroups.append(group)
         return publicGroups
 
-    def isNameTaken(self, groupName):
+    def isNameTaken(self, groupName, ignoreGroup = None):
         for group in self.groupList:
-            if group.getName() == groupName:
+            if group.getName() == groupName and group != ignoreGroup:
                 return True
         return False
 
@@ -830,9 +836,6 @@ class GUIManager(object):
 
 #GUIs (view)
 
-
-
-
 class AbstractGUI(object):
     """Parent class of all main GUI windows"""
     def __init__(self, managerList, parent):
@@ -873,8 +876,8 @@ class PopupGUI(object):
     """Simple popup that is closed with an ok dialog"""
     def __init__(self, parent, message):
         self.window = Toplevel()
-        self.window.geometry("200x125+100+100")
-        messageLabel = Label(self.window, text=message)
+        self.window.geometry("250x150+100+100")
+        messageLabel = Label(self.window, text=message, justify = "center", wraplength = 220)
         okButton = Button(self.window, text = "OK", command = self.closePopup)
         messageLabel.pack()
         okButton.pack()
@@ -920,7 +923,6 @@ class LoginGUI(AbstractGUI):
         self.passwordEntry = Entry(passwordFrame)
         self.passwordEntry.pack(side=RIGHT)
          
-
     def openRegisterWindow(self):
         """Opens the register window, which will set loginGUI (this object) to invisible
         Takes no input and returns None"""
@@ -972,6 +974,9 @@ class RegisterGUI(AbstractGUI):
         password = self.passwordEntry.get()
         passwordConfirmation = self.confirmPasswordEntry.get()
         
+        if username == "guest":
+            self.guiManager.popup("This username is reserved")
+            return
         if len(username) > 16 or len(password) > 16:
             self.guiManager.popup("Username and password may only be up to 16 characters.")
             return
@@ -1056,7 +1061,6 @@ class CalendarGUI(AbstractGUI):
         backMonthButton.pack(side = LEFT)
         self.calendarLabel.pack()
 
-
         #Bottom Frame stuff
 
         self.calendarFrame = Frame(bottomFrame)
@@ -1073,7 +1077,6 @@ class CalendarGUI(AbstractGUI):
             dayLabel = Label(self.calendarFrame, text = days[i])
             dayLabel.place(y = 0, relx = i * 1/7 + 1/15)
             #dayLabel.grid(row = 0, column = i,)
-
         #menu
         self.menuBar = Menu(self.window)
         self.window["menu"] = self.menuBar
@@ -1082,6 +1085,10 @@ class CalendarGUI(AbstractGUI):
         self.menuBar.add_cascade(label = "User", menu = userMenu)
         userMenu.add_command(label = 'Logout', command = self.logout)
         userMenu.add_command(label = "Groups", command = self.openGroups)
+
+        memoMenu = Menu(self.menuBar)
+        self.menuBar.add_cascade(label = "Memo", menu = memoMenu)
+        memoMenu.add_command(label = 'New', command = self.newNoteEventless)
         #self.menuBar.entryconfig("User", state = DISABLED)
 
     def logout(self):
@@ -1089,7 +1096,6 @@ class CalendarGUI(AbstractGUI):
             returns None"""
         self.userManager.logout()
         self.guiManager.openWindow("login")
-
     
     def updateCalendarFrame(self):
         self.widgetNoteDict = {}
@@ -1104,14 +1110,19 @@ class CalendarGUI(AbstractGUI):
             day = day - datetime.timedelta(days = 1)
         self.firstDayOnCal = day
 
-
         for i in range(35):
             dayList = []
             dayFrame = self.createDayFrame(day, i)
             dayFrame.place(relwidth = 1/7, relheight = .19, relx = (i%7)*(1/7), rely = ((i//7) * 1/5) * .95 + .05)
             self.dayFrames.append(dayFrame)
             day = day + datetime.timedelta(days = 1)
-        
+
+    def newNoteEventless(self):
+        note = self.noteManager.generateNewNote()
+        note.setEvent(self.today.strftime("%Y-%m-%d"))
+        self.currentNote = note
+        self.guiManager.openWindow("noteDetails")
+
     def newNote(self, event):
         note = self.noteManager.generateNewNote()
         dayOnCalIndex = self.dayFrames.index(event.widget)
@@ -1126,9 +1137,6 @@ class CalendarGUI(AbstractGUI):
         self.currentNote = note
         self.updateCalendarFrame()
         self.guiManager.openWindow("noteDetails")
-
-        
-
 
     def createDayFrame(self, day, index):
         dayNumber = day.strftime("%d")
@@ -1174,7 +1182,6 @@ class CalendarGUI(AbstractGUI):
         labelClicked = event.widget
         self.currentNote = self.widgetNoteDict[labelClicked]
         self.guiManager.openWindow("noteDetails")
-
         return
 
     def openGroups(self):
@@ -1300,6 +1307,20 @@ class TwoPaneGUI(AbstractGUI):
 
         self.textBox = Text(textBoxFrame, state = DISABLED)
         self.textBox.pack(fill = BOTH, expand = True)
+
+        #menu
+        self.menuBar = Menu(self.window)
+        self.window["menu"] = self.menuBar
+
+        userMenu = Menu(self.menuBar)
+        self.menuBar.add_cascade(label = "User", menu = userMenu)
+        userMenu.add_command(label = 'Logout', command = self.logout)
+        userMenu.add_command(label = "Groups", command = self.openGroups)
+
+        memoMenu = Menu(self.menuBar)
+        self.menuBar.add_cascade(label = "Memo", menu = memoMenu)
+        memoMenu.add_command(label = 'New', command = self.newNote)
+        #self.menuBar.entryconfig("User", state = DISABLED)
 
     def deleteCurrentNote(self):
         self.currentNote.setMark()
@@ -1527,6 +1548,9 @@ class TwoPaneGUI(AbstractGUI):
         """Returns note currently being used by GUI"""
         return self.currentNote
 
+    def openGroups(self):
+        self.guiManager.openWindow("groups")
+
 
 class NoteDetailsGUI(AbstractGUI):
     """This GUI is used dually by both TwoPaneGUI and CalendarGUI in order to show the full details of a note object."""
@@ -1637,18 +1661,14 @@ class NoteDetailsGUI(AbstractGUI):
         self.createdText.set("Created :" + self.currentNote.getDateMade())
         self.show()
 
-
     def back(self):
         """Saves and goes back to previous window
-
         returns None"""
         if self.save():
-            self.guiManager.openWindow(self.backTo)
-        
+            self.guiManager.openWindow(self.backTo)        
 
     def save(self):
         """ Grabs data from widgets and saves to note
-
         returns True if successful and false Otherwise"""
 
         if len(self.titleEntry.get()) > 32:
@@ -1675,6 +1695,7 @@ class NoteDetailsGUI(AbstractGUI):
         return True
 
 
+
 class GroupsGUI(AbstractGUI):
     def __init__(self, managerList, parent):
         super().__init__(managerList,parent)
@@ -1682,6 +1703,7 @@ class GroupsGUI(AbstractGUI):
         self.userGroups = []
         self.publicGroups = []
         self.userList = []
+        self.nonMembers = []
 
         self.window.geometry("800x600+100+100")
         
@@ -1750,7 +1772,7 @@ class GroupsGUI(AbstractGUI):
         self.membersListbox = Listbox(groupMembersFrame)
         memberManagementFrame = Frame(groupMembersFrame)
         self.kickButton = Button(memberManagementFrame, text = "-", state = DISABLED, command = self.kickMember)
-        self.inviteCombobox = ttk.Combobox(memberManagementFrame)
+        self.inviteCombobox = ttk.Combobox(memberManagementFrame, state = "readonly")
         self.inviteButton = Button(memberManagementFrame, text = "+", command = self.inviteMember, state = DISABLED)
 
         membersLabel.pack(side = TOP)
@@ -1766,19 +1788,42 @@ class GroupsGUI(AbstractGUI):
         self.joinButton.pack(side = BOTTOM)
 
     def joinGroup(self):
-        pass
+        self.currentGroup.addMember(self.userManager.getCurrentUser().getId())
+        self.updateGroupLists()
+        self.updateGroupInfo()
 
     def inviteMember(self):
-        pass
+        comboboxIndex = self.inviteCombobox.current()
+        self.inviteCombobox.set("")
+        if comboboxIndex == -1:
+            return
+        newMember = self.nonmembers[comboboxIndex]
+        self.currentGroup.addMember(newMember.getId())
+        self.updateGroupInfo()
 
     def kickMember(self):
-        pass
+        selectedMember = self.membersListbox.curselection()
+        if len(selectedMember) == 0:
+            self.guiManager.popup("Please select a member to kick")
+            return False
+        member = self.memberList[selectedMember[0]]
+        if member.getId() == currentGroup.getOwner():
+            self.guiManager.popup("You can't kick yourself!")
+            return False
+
+        self.currentGroup.removeMember(member.getId())
+        self.updateGroupInfo()
 
     def editGroup(self):
         self.guiManager.openWindow("groupDetails")
 
     def leaveGroup(self):
-        pass
+        if self.currentGroup.getOwner() == self.userManager.getCurrentUser().getId():
+            self.guiManager.popup("You can not leave a group you created")
+            #TODO disbanding if ur the owner
+            return False
+        self.currentGroup.removeMember(self.userManager.getCurrentUser().getId())
+        return True
 
     def selectMyGroup(self, event):
         if len(self.myGroupsListbox.curselection()) == 0:
@@ -1804,6 +1849,18 @@ class GroupsGUI(AbstractGUI):
         self.updateGroupLists()
 
     def updateGroupInfo(self):
+        if (len(self.publicGroupsListbox.curselection()) + len(self.myGroupsListbox.curselection())) == 0:
+            self.kickButton["state"] = DISABLED
+            self.editButton["state"] = DISABLED
+            self.leaveButton["state"] = DISABLED
+            self.inviteButton["state"] = DISABLED
+            self.joinButton["state"] = DISABLED
+            self.descriptionTextbox.delete("1.0", END)
+            self.membersListbox.delete(0, END)
+            self.titleLabel["text"] = "Groups"
+            self.inviteCombobox["values"] = []
+            return
+
         if(self.userManager.getCurrentUser().getId() == self.currentGroup.getOwner()):
             nstate = NORMAL
         else:
@@ -1821,9 +1878,15 @@ class GroupsGUI(AbstractGUI):
         self.joinButton["state"] = DISABLED if nstate == NORMAL else NORMAL
 
         members = self.currentGroup.getMembers()
+        self.nonmembers = self.userManager.getNonMembers(members)
+        nameValues = [("guest" if x.getUsername() == "" else x.getUsername()) for x in self.nonmembers]
+        self.inviteCombobox["values"] = nameValues
         self.membersListbox.delete(0, END)
         for i in range(len(members)):
-            self.membersListbox.insert(0, members[i])
+            username = self.userManager.getUserById(members[i]).getUsername()
+            if username == "":
+                username = "guest"
+            self.membersListbox.insert(0, username)
 
         self.descriptionTextbox["state"] = NORMAL
         self.descriptionTextbox.delete("1.0", END)
@@ -1831,7 +1894,6 @@ class GroupsGUI(AbstractGUI):
         self.descriptionTextbox["state"] = DISABLED
         
         self.titleLabel["text"] = self.currentGroup.getName()
-
 
     def updateGroupLists(self):
         self.userGroups = self.groupManager.getJoinedGroups()
@@ -1845,16 +1907,16 @@ class GroupsGUI(AbstractGUI):
         for i in range(len(self.publicGroups)):
             self.publicGroupsListbox.insert(i, self.publicGroups[i].getName())
 
-
     def createNewGroup(self):
         newGroup = self.groupManager.generateNewGroup()
         self.userGroups.append(newGroup)
         self.currentGroup = newGroup
         self.guiManager.openWindow("groupDetails")
 
-
     def backToHome(self):
         self.guiManager.openWindow("home")
+
+
 
 class GroupDetailsGUI(AbstractGUI): 
     def __init__(self, managerList, parent):
@@ -1898,7 +1960,7 @@ class GroupDetailsGUI(AbstractGUI):
         name = self.nameEntry.get()
         isPublic = self.radioValue.get()
         description = self.descriptionText.get("1.0", "end-1c")
-        if self.groupManager.isNameTaken(name):
+        if self.groupManager.isNameTaken(name, self.currentGroup):
             self.guiManager.popup("Group name is already in use")
             return False
         if len(name) > 30:
@@ -1908,6 +1970,7 @@ class GroupDetailsGUI(AbstractGUI):
             self.guiManager.popup("Group description must be 180 Characters or less")
             return False
         isPrivate = not isPublic
+        self.currentGroup.setUpdate(True)
         self.currentGroup.setPrivacy(isPrivate)
         self.currentGroup.setDescription(description)
         self.currentGroup.setName(name)
@@ -2194,7 +2257,12 @@ class Group(DataObjects):
         
     def addUser(self, newuser):
         """Adds a user to the list of users in the group"""
+        self.update = True
         self.members.append(newuser)
+
+    def addMember(self, newuser):
+        """Adds a user to the list of users in thr group"""
+        self.addUser(newuser)
         
     def setDescription(self, newdesc):
         """Edits the description of the group"""
@@ -2204,9 +2272,8 @@ class Group(DataObjects):
         if user.getId() in self.members:
             return True
         return False
-
         
-    def remUser(self, memind):
+    def removeMember(self, memind):
         """Removes a user from the group"""
         self.members.remove(memind)
         
@@ -2232,6 +2299,10 @@ class Group(DataObjects):
     def addNote(self, note):
         """Adds notes to the group note list"""
         self.notes.append(note)
+
+    def getNotes(self):
+        """Returns list of notes shared with the group"""
+        return self.notes
         
     def fillOldNotes(self):
         """Fills the Old Notes list for when saving occurs"""
