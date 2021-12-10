@@ -144,6 +144,8 @@ returns&nbsp;None</tt></dd></dl>
 
 <dl><dt><a name="CalendarGUI-newNote"><strong>newNote</strong></a>(self, event)</dt></dl>
 
+<dl><dt><a name="CalendarGUI-newNoteEventless"><strong>newNoteEventless</strong></a>(self)</dt></dl>
+
 <dl><dt><a name="CalendarGUI-openGroups"><strong>openGroups</strong></a>(self)</dt></dl>
 
 <dl><dt><a name="CalendarGUI-show"><strong>show</strong></a>(self)</dt><dd><tt>Makes&nbsp;window&nbsp;re-appear&nbsp;if&nbsp;invisible,&nbsp;and&nbsp;loads&nbsp;in&nbsp;Notes&nbsp;from&nbsp;current&nbsp;user&nbsp;into&nbsp;the&nbsp;GUI&nbsp;<br>
@@ -936,6 +938,8 @@ returns&nbsp;None</tt></dd></dl>
 
 <dl><dt><a name="TwoPaneGUI-openCalendarView"><strong>openCalendarView</strong></a>(self, event)</dt></dl>
 
+<dl><dt><a name="TwoPaneGUI-openGroups"><strong>openGroups</strong></a>(self)</dt></dl>
+
 <dl><dt><a name="TwoPaneGUI-openNoteDetails"><strong>openNoteDetails</strong></a>(self)</dt><dd><tt>Opens&nbsp;GUI&nbsp;with&nbsp;currently&nbsp;selected&nbsp;note's&nbsp;details<br>
 returns&nbsp;None</tt></dd></dl>
 
@@ -1071,9 +1075,20 @@ returns&nbsp;<a href="#User">User</a>&nbsp;<a href="builtins.html#object">object
 
 <dl><dt><a name="UserManager-getCurrentUser"><strong>getCurrentUser</strong></a>(self)</dt><dd><tt>Returns&nbsp;the&nbsp;current&nbsp;user&nbsp;attribute<br>
 &nbsp;<br>
-returns&nbsp;user&nbsp;<a href="builtins.html#object">object</a></tt></dd></dl>
+returns&nbsp;<a href="#User">User</a>&nbsp;<a href="builtins.html#object">object</a></tt></dd></dl>
 
-<dl><dt><a name="UserManager-getNonMembers"><strong>getNonMembers</strong></a>(self, members)</dt></dl>
+<dl><dt><a name="UserManager-getNonCurrent"><strong>getNonCurrent</strong></a>(self)</dt><dd><tt>Returns&nbsp;a&nbsp;list&nbsp;of&nbsp;users&nbsp;that&nbsp;are&nbsp;not&nbsp;the&nbsp;currently&nbsp;selected&nbsp;users.<br>
+returns&nbsp;a&nbsp;list&nbsp;of&nbsp;<a href="#User">User</a>&nbsp;objects</tt></dd></dl>
+
+<dl><dt><a name="UserManager-getNonMembers"><strong>getNonMembers</strong></a>(self, members)</dt><dd><tt>Returns&nbsp;a&nbsp;list&nbsp;of&nbsp;users&nbsp;that&nbsp;are&nbsp;not&nbsp;in&nbsp;input&nbsp;list<br>
+&nbsp;<br>
+members&nbsp;&nbsp;&nbsp;list&nbsp;of&nbsp;user&nbsp;IDs<br>
+&nbsp;<br>
+returns&nbsp;inverse&nbsp;of&nbsp;members&nbsp;list</tt></dd></dl>
+
+<dl><dt><a name="UserManager-getUserById"><strong>getUserById</strong></a>(self, userId)</dt><dd><tt>Takes&nbsp;a&nbsp;userId&nbsp;integer&nbsp;and&nbsp;returns&nbsp;the&nbsp;appropriate&nbsp;<a href="#User">User</a>&nbsp;<a href="builtins.html#object">object</a><br>
+&nbsp;<br>
+returns&nbsp;<a href="#User">User</a>&nbsp;<a href="builtins.html#object">object</a></tt></dd></dl>
 
 <dl><dt><a name="UserManager-isUsernameTaken"><strong>isUsernameTaken</strong></a>(self, username)</dt></dl>
 

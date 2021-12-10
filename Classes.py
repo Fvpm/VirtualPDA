@@ -248,6 +248,7 @@ class DatabaseManager(object):
                     if type(condata) is not int:
                         condata = int(condata)
                     note.share(condata)
+            note.fillOldUsers()
         
 
     def loadGroups(self):
@@ -397,56 +398,39 @@ class DatabaseManager(object):
             #if the note is new then add it to the database
             self.cursor.execute(add_note, (note.getId(), note.getOwner(), note.getDateMade(), note.getModified(), note.getText(), note.getEvent(), note.getImportance(), note.getTitle(), note.getColor(), note.getRepeating()))
             self.cursor.execute(add_usercon, (note.getOwner(), note.getId()))
-        elif note.getMark() == True:
-            #If the note has been marked for deletion then delete everything having to do with it in database
-            ident = (note.getId(), )
-            self.cursor.execute(delete_noteuser, ident)
-            self.cursor.execute(delete_note, ident)
-            self.cursor.execute(delete_notegroup, ident)
-            self.cursor.execute(delete_notetag, ident)
         elif note.getUpdate() == True:
             #If note has been updated then update the database as well
             tags = note.getTags()
             oldtags = note.getOldTags()
             #Check if tags have been added
             for tag in tags:
-                count = 0
-                for oldtag in oldtags:
-                    if tag == oldtag:
-                        count += 1
-                if count == 0:
-                    self.cursor.execute(add_tag, tag[0], tag[1], note.getId())
+                if tag not in oldtags:
+                    self.cursor.execute(add_tag, (tag[0], tag[1], note.getId()))
             #Check if tags have been removed
             for oldtag in oldtags:
-                count = 0
-                for tag in tags:
-                    if oldtag == tag:
-                        count += 1
-                if count == 0:
-                    self.cursor.execute(remove_tag, oldtag[0], note.getId())
+                if oldtag not in tags:
+                    self.cursor.execute(remove_tag, (oldtag[0], note.getId()))
             #Check if new users are able to view the note
             for shareuser in note.getVisibility():
-                count = 0
-                for olduser in note.getOldVisibility():
-                    if shareuser == olduser:
-                        count += 1
-                if count == 0:    
-                    self.cursor.execute(add_usercon, shareuser, note.getId())
+                if shareuser not in note.getOldVisibility():
+                    self.cursor.execute(add_usercon, (shareuser, note.getId()))
             #Check if users are no longer able to view the note
             for olduser in note.getOldVisibility():
-                count = 0
-                for shareuser in note.getVisibility():
-                    if olduser == shareuser:
-                        count += 1
-                if count == 0:
-                    conident = (note.getId(), olduser)
-                    self.cursor.execute(delete_notecon, conident)
+                if olduser not in note.getVisibility():
+                    self.cursor.execute(delete_notecon, (olduser, note.getId()))
             self.cursor.execute(update_notedata, (note.getText(), note.getId()))
             self.cursor.execute(update_notedate, (note.getModified(), note.getId()))
             self.cursor.execute(update_notecolor,( note.getColor(), note.getId()))
             self.cursor.execute(update_noteimportance, (note.getImportance(), note.getId()))
             self.cursor.execute(update_noteEventDate, (note.getEvent(), note.getId()))
             self.cursor.execute(update_noteTitle, (note.getTitle(), note.getId()))
+        if note.getMark() == True:
+            #If the note has been marked for deletion then delete everything having to do with it in database
+            ident = (note.getId(), )
+            self.cursor.execute(delete_noteuser, ident)
+            self.cursor.execute(delete_note, ident)
+            self.cursor.execute(delete_notegroup, ident)
+            self.cursor.execute(delete_notetag, ident)
         
     def saveGroups(self, group):
         """Saves all data concerning groups to the database"""
@@ -604,10 +588,22 @@ class UserManager(object):
     def getCurrentUser(self):
         """Returns the current user attribute
 
-        returns user object"""
+        returns User object"""
         return self.currentUser
 
+    def getNonCurrent(self):
+        """Returns a list of users that are not the currently selected users.
+        returns a list of User objects"""
+        nonCurrents = [x for x in self.userList]
+        nonCurrents.remove(self.currentUser)
+        return nonCurrents
+
     def getNonMembers(self, members):
+        """Returns a list of users that are not in input list
+
+        members   list of user IDs
+
+        returns inverse of members list"""
         nonMembers = []
         for user in self.userList:
             if user.getId() not in members:
@@ -615,6 +611,9 @@ class UserManager(object):
         return nonMembers
 
     def getUserById(self, userId):
+        """Takes a userId integer and returns the appropriate User object
+        
+        returns User object"""
         for user in self.userList:
             if user.getId() == userId:
                 return user
@@ -696,6 +695,13 @@ class NoteManager(object):
         for note in self.noteList:
             if note.getOwner() == currentUser.getId() and note.getMark() == False:
                 userNotes.append(note)
+            elif currentUser.getId() in note.getVisibility():
+                userNotes.append(note)
+            else:
+                for group in self.groupManager.getJoinedGroups():
+                    if note.getId() in group.getNotes():
+                        userNotes.append(note)
+                        break
         userNotes.reverse()
         return userNotes
 
@@ -747,6 +753,13 @@ class GroupManager(object):
             if group.getName() == groupName and group != ignoreGroup:
                 return True
         return False
+
+    def findSharedGroups(self, noteId):
+        sharedGroups = []
+        for group in self.groupList:
+            if noteId in group.getNotes():
+                sharedGroups.append(group)
+        return sharedGroups
 
 class GUIManager(object):
     def __init__(self):
@@ -920,7 +933,7 @@ class LoginGUI(AbstractGUI):
         passwordFrame.pack(expand = True)
         passwordLabel = Label(passwordFrame, text = "Password:")
         passwordLabel.pack(side=LEFT)
-        self.passwordEntry = Entry(passwordFrame)
+        self.passwordEntry = Entry(passwordFrame, show = "*")
         self.passwordEntry.pack(side=RIGHT)
          
     def openRegisterWindow(self):
@@ -1299,10 +1312,10 @@ class TwoPaneGUI(AbstractGUI):
         self.titleEntry.pack(side = LEFT, fill = X, expand = True)
 
         self.detailsButton = Button(tagFrame, text = "details", command = self.openNoteDetails, state = DISABLED)
-        tagsLabel = Label(tagFrame, text = "Tags:")
-        self.tagsEntry = Entry(tagFrame, state = DISABLED)
-        tagsLabel.pack(side = LEFT)
-        self.tagsEntry.pack(side = LEFT, fill = X, expand = True)
+        #tagsLabel = Label(tagFrame, text = "Tags:")
+        #self.tagsEntry = Entry(tagFrame, state = DISABLED)
+        #tagsLabel.pack(side = LEFT)
+        #self.tagsEntry.pack(side = LEFT, fill = X, expand = True)
         self.detailsButton.pack(side = RIGHT)
 
         self.textBox = Text(textBoxFrame, state = DISABLED)
@@ -1357,7 +1370,7 @@ class TwoPaneGUI(AbstractGUI):
 
         self.currentNote.setText(self.textBox.get("1.0", "end-1c"))
         self.currentNote.setTitle(self.titleEntry.get())
-        self.currentNote.setTags(self.tagsEntry.get())#TODO tags
+        #self.currentNote.setTags(self.tagsEntry.get())#TODO tags
 
 
         self.currentNote.setUpdate(True)
@@ -1496,8 +1509,8 @@ class TwoPaneGUI(AbstractGUI):
                 box.config(relief = GROOVE)
             self.textBox.delete("1.0", END)
             self.titleEntry.delete(0, END)
-            self.tagsEntry.delete(0, END)
-            self.tagsEntry["state"] = DISABLED
+            #self.tagsEntry.delete(0, END)
+            #self.tagsEntry["state"] = DISABLED
             self.titleEntry["state"] = DISABLED
             self.textBox["state"] = DISABLED
             self.saveButton["state"] = DISABLED
@@ -1527,7 +1540,7 @@ class TwoPaneGUI(AbstractGUI):
         self.textBox.insert("1.0", self.currentNote.getText())
         self.titleEntry.delete(0, END)
         self.titleEntry.insert(0, self.currentNote.getTitle())
-        self.tagsEntry.delete(0, END)
+        #self.tagsEntry.delete(0, END)
         self.titleEntry.insert(0, self.currentNote.getTags())
 
         
@@ -1557,6 +1570,7 @@ class NoteDetailsGUI(AbstractGUI):
 
     def __init__(self, managerList, parent):
         super().__init__(managerList,parent)
+        self.comboList = []
         self.window.geometry("400x700+100+100")
         self.backTo = ""
         self.currentNote = None
@@ -1571,7 +1585,9 @@ class NoteDetailsGUI(AbstractGUI):
         priorityFrame = Frame(self.window)
         colorFrame = Frame(self.window)
         sharedFrame = Frame(self.window)
-        self.sharedList = Listbox(self.window)
+        sharedListFrame = Frame(self.window)
+        self.sharedUserList = Listbox(sharedListFrame)
+        self.sharedGroupList = Listbox(sharedListFrame)
 
         self.idText = StringVar()
         self.creatorText = StringVar()
@@ -1590,7 +1606,9 @@ class NoteDetailsGUI(AbstractGUI):
         priorityFrame.pack(side = TOP)
         colorFrame.pack(side = TOP)
         sharedFrame.pack(side = TOP)
-        self.sharedList.pack(side = TOP)
+        self.sharedUserList.pack(side = RIGHT)
+        self.sharedGroupList.pack(side = LEFT)
+        sharedListFrame.pack(side = TOP)
         idLabel.pack(side = TOP)
         creatorLabel.pack(side = TOP)
         createdLabel.pack(side = TOP)
@@ -1601,10 +1619,10 @@ class NoteDetailsGUI(AbstractGUI):
         titleLabel.pack(side = LEFT)
         self.titleEntry.pack(side = RIGHT, fill = X)
 
-        tagLabel = Label(tagFrame, text = "Tags:")
-        self.tagEntry = Entry(tagFrame, state = DISABLED) #TODO enable
-        tagLabel.pack(side = LEFT)
-        self.tagEntry.pack(side = RIGHT, fill = X)
+        #tagLabel = Label(tagFrame, text = "Tags:")
+        #self.tagEntry = Entry(tagFrame, state = DISABLED) #TODO enable
+        #tagLabel.pack(side = LEFT)
+        #self.tagEntry.pack(side = RIGHT, fill = X)
 
         dateLabel = Label(dateFrame, text= "Date (yyyy-mm-dd):")
         self.dateEntry = Entry(dateFrame)
@@ -1624,14 +1642,41 @@ class NoteDetailsGUI(AbstractGUI):
         self.colorEntry.pack(side = RIGHT)
 
         sharedLabel = Label(sharedFrame, text = "Shared with:")
-        #sharedButton = Button(sharedFrame, text = "Share", command = share())
+        sharedButton = Button(sharedFrame, text = "Share", command = self.share)
+        self.sharedCombobox = ttk.Combobox(sharedFrame, state = "readonly")
         sharedLabel.pack(side = LEFT)
-        #sharedButton.pack(side = RIGHT)
+        sharedButton.pack(side = RIGHT)
+        self.sharedCombobox.pack(side = RIGHT)
 
-    def share():
-        #TODO
-        print("ERROR: NoteDetailsGUI.share() should not have run")
-        return
+    def share(self):
+        comboboxIndex = self.sharedCombobox.current()
+        if comboboxIndex == -1:
+            return
+        item = self.comboList[comboboxIndex]
+        if type(item) == type(self.userManager.getCurrentUser()):
+            visibleBy = self.currentNote.getVisibility()
+            if item in visibleBy:
+                return
+            self.currentNote.share(item.getId())
+        else:
+            print("group")
+            sharedGroups = self.groupManager.findSharedGroups(item.getId())
+            if item in sharedGroups:
+                return
+            item.addNote(item.getId())
+        self.updateShareLists()
+
+            
+    def updateShareLists(self):
+        visibleBy = self.currentNote.getVisibility()
+        sharedGroups = self.groupManager.findSharedGroups(self.currentNote.getId())
+        self.sharedUserList.delete(0, END)
+        for i in range(len(visibleBy)):
+            self.sharedUserList.insert(i, self.userManager.getUserById(visibleBy[i]).getUsername())
+        self.sharedGroupList.delete(0, END)
+        for i in range(len(sharedGroups)):
+            self.sharedGroupList.insert(i, sharedGroups[i].getName())
+
 
     def openNoteDetails(self, note, view):
         """ This function is called by GUIManager in lieu of AbstractGUI.show() in order to load in note data and set
@@ -1647,8 +1692,8 @@ class NoteDetailsGUI(AbstractGUI):
 
         self.titleEntry.delete(0, END)
         self.titleEntry.insert(0, self.currentNote.getTitle())
-        self.tagEntry.delete(0, END)
-        self.tagEntry.insert(0, self.currentNote.getTags())
+        #self.tagEntry.delete(0, END)
+        #self.tagEntry.insert(0, self.currentNote.getTags())
         self.contentBox.delete("1.0", END)
         self.contentBox.insert("1.0", self.currentNote.getText())
         self.dateEntry.delete(0, END)
@@ -1659,6 +1704,18 @@ class NoteDetailsGUI(AbstractGUI):
         self.idText.set("Note ID:" + str(self.currentNote.getId()))
         self.creatorText.set("Creator ID:" + str(self.currentNote.getOwner()))
         self.createdText.set("Created :" + self.currentNote.getDateMade())
+
+        groups = self.groupManager.getJoinedGroups()
+        groupLines = [("GROUP: " + x.getName()) for x in groups]
+        users = self.userManager.getNonCurrent()#
+        userLines = [("USER: " + x.getUsername()) for x in users]
+        self.comboList = users + groups
+        comboLines =  userLines + groupLines
+        self.sharedCombobox["values"] = comboLines
+
+        self.updateShareLists()
+
+
         self.show()
 
     def back(self):
@@ -1687,7 +1744,7 @@ class NoteDetailsGUI(AbstractGUI):
         self.currentNote.setUpdate(True)
 
         self.currentNote.setTitle(self.titleEntry.get())
-        self.currentNote.setTags(self.tagEntry.get())
+        #self.currentNote.setTags(self.tagEntry.get())
         self.currentNote.setText(self.contentBox.get("1.0","end-1c"))
         self.currentNote.setEvent(date)
         self.currentNote.setImportance(self.priorityEntry.get())
@@ -2064,6 +2121,7 @@ class Note(DataObjects):
         
     def share(self, shareuser: int):
         """share note with other users"""
+        self.update = True
         self.visibleBy.append(shareuser)
         
     def addTag(self, newtag):
@@ -2181,6 +2239,7 @@ class Note(DataObjects):
         self.visibleBy = nVisibility
 
 
+
 class User(DataObjects):
     def __init__(self, _id: int, _username: str, _password: str):
         """Groups and notes are filled in separately by userManager when appropriate"""
@@ -2198,10 +2257,12 @@ class User(DataObjects):
 
     def getGroups(self) -> list:
         """Returns a list of group objects the user is a part of"""
+        0/0
         return self.groups
 
     def getNotes(self) -> list:
         """Returns a list of note objects the user has access to"""
+        0/0
         return self.notes
 
     def getPassword(self) -> str:
@@ -2210,10 +2271,12 @@ class User(DataObjects):
     
     def setGroups(self, nGroups):
         """Sets the list of groups"""
+        0/0
         self.groups = nGroups
 
     def setNotes(self, nNotes):
         """Sets the list of notes"""
+        0/0
         self.notes = nNotes
         
     def changePassword(self, oldPassword: str, newPassword: str):
@@ -2275,10 +2338,12 @@ class Group(DataObjects):
         
     def removeMember(self, memind):
         """Removes a user from the group"""
+        self.update = True
         self.members.remove(memind)
         
     def setName(self, newname):
         """Edits the name of the group"""
+        self.update = True
         self.name = newname
         
     def fillOldMembers(self):
@@ -2298,6 +2363,7 @@ class Group(DataObjects):
             
     def addNote(self, note):
         """Adds notes to the group note list"""
+        self.update = True
         self.notes.append(note)
 
     def getNotes(self):
