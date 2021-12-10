@@ -137,6 +137,7 @@ class DatabaseManager(object):
             " `name` varchar(30),"
             " `description` varchar(180),"
             " `user_id` int(12),"
+            " `public` boolean,"
             " PRIMARY KEY(`group_id`),"
             " FOREIGN KEY(`user_id`) REFERENCES `users` (`user_id`)"
             ") ENGINE=InnoDB")
@@ -693,6 +694,7 @@ class NoteManager(object):
 class GroupManager(object):
     def __init__(self):
         self.groupList = []
+        self.nextId = 0
     def setManagers(self, _databaseManager, _userManager, _noteManager, _guiManager):
         """Because Managers have to be made all at once and reference each other, this function is called when this object is created on startup but after all managers are initalized"""
         self.databaseManager = _databaseManager
@@ -704,8 +706,20 @@ class GroupManager(object):
         self.userManager.userJoinGroup(user,group)
     def addGroup(self, groupId, groupname, description, owner):
         "Adds a group to the group list so it can be kept track of"
+        if groupId >= self.nextId:
+            self.nextId = groupId + 1
         newGroup = Group(groupId, groupname, description, owner)
         self.groupList.append(newGroup)
+    def generateNewGroup(self):
+        newGroup = Group(self.nextId, "", "", self.userManager.getCurrentUser().getId())
+        self.groupList.append(newGroup)
+        return newGroup
+
+    def isNameTaken(self, groupName):
+        for group in self.groupList:
+            if group.getName() == groupName:
+                return True
+        return False
 
 class GUIManager(object):
     def __init__(self):
@@ -734,6 +748,10 @@ class GUIManager(object):
         self.guiDict["groups"] = GroupsGUI(self.managerList, self.root)
 
         self.openWindow("login")
+
+
+        #If I had more time I would redesign this 
+        self.groupDetails = GroupDetailsGUI(self.managerList, self.root)
         self.noteDetails = NoteDetailsGUI(self.managerList, self.root)
 
         self.root.mainloop()
@@ -742,6 +760,12 @@ class GUIManager(object):
         """Switches windows by hiding the current one and showing the requested"""
         oldWindow = self.currentWindow
 
+        if keyword == "noteDetails":
+            self.openNoteDetails()
+            return
+        if keyword == "groupDetails":
+            self.openGroupDetails()
+            return
 
         if(keyword in self.guiDict.keys()):
             self.currentWindow = self.guiDict[keyword]
@@ -758,8 +782,17 @@ class GUIManager(object):
         """Ends the tkinter program. Is called when x on any window is pressed"""
         self.root.destroy()
 
+    def openGroupDetails(self):
+        """Opens the GroupDetailGUI, grabbing appropriate information from group GUI"""
+        currentGroup = self.currentWindow.getCurrentGroup()
+        self.currentWindow.gide()
+        self.currentWindow = self.groupDetails
+        self.currentWindow.openGroupDetails(currentGroup)
+        
+        
+
     def openNoteDetails(self):
-        """Opens the NoteDetailsGUIs, grabbing appropriate information from previous GUI"""
+        """Opens the NoteDetailsGUI, grabbing appropriate information from previous GUI"""
         currentNote = self.currentWindow.getCurrentNote()
         self.currentWindow.hide()
         view = "twoPane" if self.currentWindow == self.guiDict["twoPane"] else "calendar"
@@ -1065,7 +1098,7 @@ class CalendarGUI(AbstractGUI):
 
         self.currentNote = note
         self.updateCalendarFrame()
-        self.guiManager.openNoteDetails()
+        self.guiManager.openWindow("noteDetails")
 
         
 
@@ -1113,7 +1146,7 @@ class CalendarGUI(AbstractGUI):
     def doubleClickNoteLabel(self, event):
         labelClicked = event.widget
         self.currentNote = self.widgetNoteDict[labelClicked]
-        self.guiManager.openNoteDetails()
+        self.guiManager.openWindow("noteDetails")
 
         return
 
@@ -1264,7 +1297,7 @@ class TwoPaneGUI(AbstractGUI):
         """ Opens GUI with currently selected note's details
             returns None"""
         self.saveCurrentNote()
-        self.guiManager.openNoteDetails()
+        self.guiManager.openWindow("noteDetails")
 
     def saveCurrentNote(self):
         """ Grabs info from widgets, saves note, and updates display
@@ -1629,6 +1662,11 @@ class GroupsGUI(AbstractGUI):
         mainFrame.pack(side = BOTTOM, fill = BOTH, expand = True)
 
         #topBarFrame
+        newGroupButton = Button(topBarFrame, text = "New group", command = self.createNewGroup)
+        backButton = Button(topBarFrame, text = "<--", command = self.backToHome)
+
+        newGroupButton.pack(side = RIGHT)
+        backButton.pack(side = LEFT)
 
         #0mainFrame
         leftFrame = Frame(mainFrame, width = 300)
@@ -1718,10 +1756,82 @@ class GroupsGUI(AbstractGUI):
     def selectPublicGroup(self, event):
         pass    
 
-class GroupSettingsGUI(AbstractGUI): 
+    def createNewGroup(self):
+        self.groupManager.
+        pass
+
+    def backToHome(self):
+        pass
+
+class GroupDetailsGUI(AbstractGUI): 
     def __init__(self, managerList, parent):
         super().__init__(managerList,parent)
+        self.currentGroup = None
         self.window.geometry("800x600+100+100")
+
+        nameFrame = Frame(self.window)
+        privacyFrame = Frame(self.window)
+        descriptionFrame = Frame(self.window)
+        saveButton = Button(self.window, text = "Save", command = self.saveAndBack)
+
+        nameFrame.pack()
+        privacyFrame.pack()
+        descriptionFrame.pack()
+        saveButton.pack()
+
+        self.radioValue = IntVar()
+
+        nameLabel = Label(nameFrame, text="Group name")
+        self.nameEntry = Entry(nameFrame)
+        privacyLabel = Label(privacyFrame, text = "Privacy")
+        privacyRadioPrivate = Radiobutton(privacyFrame, text = "Private", variable = self.radioValue, value = 0)
+        privacyRadioPublic = Radiobutton(privacyFrame, text = "Public", variable = self.radioValue, value = 1)
+        descriptionLabel = Label(descriptionFrame, text = "Group description")
+        self.descriptionText = Text(descriptionFrame)
+
+        nameLabel.pack(side = LEFT)
+        self.nameEntry.pack(side = RIGHT)
+        privacyLabel.pack(side = LEFT)
+        privacyRadioPrivate.pack(side = RIGHT)
+        privacyRadioPublic.pack(side = RIGHT)
+        descriptionLabel.pack(side = LEFT)
+        self.descriptionText.pack(side = RIGHT)
+
+    def saveAndBack(self):
+        if self.save():
+            self.guiManager.open("groups")
+
+    def save(self):
+        name = self.nameEntry.get()
+        isPublic = self.radioValue.get()
+        description = self.descriptionText.get("1.0", "end-1c")
+        if self.groupManager.isNameTaken(name):
+            self.guiManager.popup("Group name is already in use")
+            return False
+        if len(name) > 30:
+            self.guiManager.popup("Group name must be 30 characters or less")
+            return False
+        if len(description) > 180:
+            self.guiManager.popup("Group description must be 180 Characters or less")
+            return False
+        isPrivate = not isPublic
+        self.currentGroup.setPrivacy(isPrivate)
+        self.currentGroup.setDescription(description)
+        self.currentGroup.setName(name)
+        return True
+
+    def openGroupDetails(self, group):
+        self.currentGroup = group
+        self.nameEntry.delete(0, END)
+        self.nameEntry.insert(0, self.currentGroup.getName())
+        isPrivate = self.currentGroup.getPrivacy()
+        if isPrivate:
+            self.radioValue.set(0)
+        else:
+            self.radioValue.set(1)
+        self.descriptionText.delete("1.0", END)
+        self.descriptionText.insert("1.0", self.currentGroup.getDescription())
+        super().show()
 
 
 
