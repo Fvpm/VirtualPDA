@@ -714,7 +714,7 @@ class GroupManager(object):
         newGroup = Group(groupId, groupname, description, owner, privacy)
         self.groupList.append(newGroup)
     def generateNewGroup(self):
-        newGroup = Group(self.nextId, "", "", self.userManager.getCurrentUser().getId())
+        newGroup = Group(self.nextId, "", "", self.userManager.getCurrentUser().getId(), True)
         self.nextId += 1
         self.groupList.append(newGroup)
         newGroup.setNew(True)
@@ -993,16 +993,22 @@ class RegisterGUI(AbstractGUI):
 class HomeGUI(AbstractGUI):
     def __init__(self, managerList, parent):
         super().__init__(managerList, parent)
-        self.window.geometry("800x600+100+100")
+        self.window.geometry("450x250+100+100")
 
         backButton = Button(self.window, text = "<-", command = self.backToLogin)
         backButton.pack(side = TOP, anchor = "nw")
 
-        twoPaneViewButton = Button(self.window, text = "two pane view", command = self.openTwoPane)
-        twoPaneViewButton.pack()
+        self.twoPaneImage = PhotoImage(file="list.gif")
+        #self.twoPaneImage = self.twoPaneImage.subsample(4)
+        self.calendarImage = PhotoImage(file="calendar.gif")
+        self.calendarImage = self.calendarImage.zoom(2)
+        self.calendarImage = self.calendarImage.subsample(5)
 
-        calendarViewButton = Button(self.window, text = "calendar view", command = self.openCalendar)
-        calendarViewButton.pack()
+        twoPaneViewButton = Button(self.window, image = self.twoPaneImage, command = self.openTwoPane)
+        twoPaneViewButton.pack(side = LEFT, padx = (10,0))
+
+        calendarViewButton = Button(self.window, image = self.calendarImage, command = self.openCalendar)
+        calendarViewButton.pack(side = RIGHT, padx = (10,20))
 
 
     def openTwoPane(self):
@@ -1226,21 +1232,7 @@ class TwoPaneGUI(AbstractGUI):
         self.notesList = []
         self.notesIndex = 0
         self.currentNote = None
-        #top Bar (please don't mess up)
-        barFrame = Frame(self.window, width = 800, height = 20)
-        barFrame.pack_propagate(False)
-        barFrame.pack(side=TOP)
 
-        listViewFrame = Frame(barFrame, width = 400, height = 20)
-        calendarViewFrame = Frame(barFrame, width = 400, height = 20, bd = 3, relief = RAISED)
-        calendarViewFrame.pack_propagate(True)
-        listViewFrame.pack(side=LEFT)
-        calendarViewFrame.pack(side=RIGHT)
-
-        switchLabel = Label(calendarViewFrame, text = "Calendar")
-        switchLabel.pack()
-        switchLabel.bind("<Button-1>",self.openCalendarView)
-        calendarViewFrame.bind("<Button-1>",self.openCalendarView)
 
 
         #outer frames
@@ -1265,6 +1257,18 @@ class TwoPaneGUI(AbstractGUI):
         newNotesButton.pack(side = LEFT, fill = X)
 
         #right widgets
+        calendarViewFrame = Frame(self.infoFrame, width = 50, height = 50, bd = 3, relief = RAISED)
+        calendarViewFrame.pack_propagate(True)
+        calendarViewFrame.pack(side = TOP, anchor = "ne")
+
+        self.calendarImage = PhotoImage(file = "calendar.gif")
+        self.calendarImage = self.calendarImage.subsample(12)
+        switchLabel = Label(calendarViewFrame, image = self.calendarImage)
+        switchLabel.pack()
+        switchLabel.bind("<Button-1>",self.openCalendarView)
+        calendarViewFrame.bind("<Button-1>",self.openCalendarView)
+
+
         titleFrame = Frame(self.infoFrame, width = 400, height = 20)
         titleFrame.pack_propagate(False)
         tagFrame = Frame(self.infoFrame, width = 400, height = 20)
@@ -1281,6 +1285,7 @@ class TwoPaneGUI(AbstractGUI):
         self.deleteButton.pack(side=BOTTOM, anchor = "se")
 
         #right subwidgets
+
         titleLabel = Label(titleFrame, text = "Title:")
         self.titleEntry = Entry(titleFrame, state = DISABLED)
         titleLabel.pack(side = LEFT)
@@ -1729,16 +1734,16 @@ class GroupsGUI(AbstractGUI):
 
         #0.1.0.0groupDescriptionFrame
         descriptionLabel = Label(groupDescriptionFrame, text = "Description")
-        self.descriptionTextbox = Text(groupDescriptionFrame, height = 1, width = 1)
+        self.descriptionTextbox = Text(groupDescriptionFrame, height = 1, width = 1, state = DISABLED)
         ownerButtonFrame = Frame(groupDescriptionFrame)
-        self.editButton = Button(ownerButtonFrame, text = "Save", state = DISABLED, command = self.saveDescription)
-        self.disbandButton = Button(ownerButtonFrame, text = "Leave", state = DISABLED, command = self.leaveGroup)
+        self.editButton = Button(ownerButtonFrame, text = "Edit", state = DISABLED, command = self.editGroup)
+        self.leaveButton = Button(ownerButtonFrame, text = "Leave", state = DISABLED, command = self.leaveGroup)
 
         descriptionLabel.pack(side = TOP)
         self.descriptionTextbox.pack(side = TOP, fill = BOTH, expand = True)
         ownerButtonFrame.pack(side = BOTTOM)
         self.editButton.pack(side = LEFT)
-        self.disbandButton.pack(side = RIGHT)
+        self.leaveButton.pack(side = RIGHT)
 
         #0.1.0.1groupMembersFrame
         membersLabel = Label(groupMembersFrame, text = "Members")
@@ -1769,17 +1774,27 @@ class GroupsGUI(AbstractGUI):
     def kickMember(self):
         pass
 
-    def saveDescription(self):
-        pass
+    def editGroup(self):
+        self.guiManager.openWindow("groupDetails")
 
     def leaveGroup(self):
         pass
 
     def selectMyGroup(self, event):
-        pass
+        if len(self.myGroupsListbox.curselection()) == 0:
+            return
+        self.publicGroupsListbox.selection_clear(0, END)
+        index = self.myGroupsListbox.curselection()[0]
+        self.currentGroup = self.userGroups[index]
+        self.updateGroupInfo()
     
     def selectPublicGroup(self, event):
-        pass    
+        if len(self.publicGroupsListbox.curselection()) == 0:
+            return
+        self.myGroupsListbox.selection_clear(0, END)
+        index = self.publicGroupsListbox.curselection()[0]
+        self.currentGroup = self.publicGroups[index]
+        self.updateGroupInfo()
 
     def getCurrentGroup(self):
         return self.currentGroup
@@ -1788,9 +1803,43 @@ class GroupsGUI(AbstractGUI):
         super().show()
         self.updateGroupLists()
 
+    def updateGroupInfo(self):
+        if(self.userManager.getCurrentUser().getId() == self.currentGroup.getOwner()):
+            nstate = NORMAL
+        else:
+            nstate = DISABLED
+
+        self.kickButton["state"] = nstate
+        self.editButton["state"] = nstate
+
+        if(self.currentGroup.hasMember(self.userManager.getCurrentUser())):
+            nstate = NORMAL
+        else:
+            nstate = DISABLED
+        self.leaveButton["state"] = nstate
+        self.inviteButton["state"] = nstate
+        self.joinButton["state"] = DISABLED if nstate == NORMAL else NORMAL
+
+        members = self.currentGroup.getMembers()
+        self.membersListbox.delete(0, END)
+        for i in range(len(members)):
+            self.membersListbox.insert(0, members[i])
+
+        self.descriptionTextbox["state"] = NORMAL
+        self.descriptionTextbox.delete("1.0", END)
+        self.descriptionTextbox.insert("1.0", self.currentGroup.getDescription())
+        self.descriptionTextbox["state"] = DISABLED
+        
+        self.titleLabel["text"] = self.currentGroup.getName()
+
+
     def updateGroupLists(self):
         self.userGroups = self.groupManager.getJoinedGroups()
         self.publicGroups = self.groupManager.getPublicGroups()
+
+        self.myGroupsListbox.delete(0, END)
+        self.publicGroupsListbox.delete(0, END)
+
         for i in range(len(self.userGroups)):
             self.myGroupsListbox.insert(i, self.userGroups[i].getName())
         for i in range(len(self.publicGroups)):
@@ -1805,7 +1854,7 @@ class GroupsGUI(AbstractGUI):
 
 
     def backToHome(self):
-        pass
+        self.guiManager.openWindow("home")
 
 class GroupDetailsGUI(AbstractGUI): 
     def __init__(self, managerList, parent):
