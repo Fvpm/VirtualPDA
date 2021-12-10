@@ -96,7 +96,6 @@ class DatabaseManager(object):
             self.cursor.execute("SELECT tag_text FROM tags")
             self.cursor.execute("SELECT note_id FROM tags")
             self.cursor.fetchall()
-            print("Accessed")
         except mysql.Error as err:
             if err.errno == errorcode.ER_BAD_DB_ERROR:
                 self.createDatabase(self.serviceId)
@@ -732,6 +731,7 @@ class GUIManager(object):
         self.guiDict["home"] = HomeGUI(self.managerList, self.root)
         self.guiDict["twoPane"] = TwoPaneGUI(self.managerList, self.root)
         self.guiDict["calendar"] = CalendarGUI(self.managerList, self.root)
+        self.guiDict["groups"] = GroupsGUI(self.managerList, self.root)
 
         self.openWindow("login")
         self.noteDetails = NoteDetailsGUI(self.managerList, self.root)
@@ -740,15 +740,19 @@ class GUIManager(object):
 
     def openWindow(self, keyword):
         """Switches windows by hiding the current one and showing the requested"""
-        if(self.currentWindow != None):
-            self.currentWindow.hide()
+        oldWindow = self.currentWindow
+
 
         if(keyword in self.guiDict.keys()):
             self.currentWindow = self.guiDict[keyword]
             self.currentWindow.show()
         else:
-            #This shouldn't ever print in production but if it does it should be helpful.
             print("Incorrect keyword sent to guiManager.openWindow(keyword) . Incorrect keyword: \"" + keyword + "\" not found in guiDict")
+
+        if oldWindow:
+            oldWindow.hide()
+
+        self.currentWindow.focus()
  
     def end(self):
         """Ends the tkinter program. Is called when x on any window is pressed"""
@@ -801,6 +805,10 @@ class AbstractGUI(object):
         Takes no input and returns None."""
         self.window.withdraw()
 
+    def focus(self):
+        """Forces focus onto the window."""
+        self.window.focus_force()
+
     def onClose(self):
         """Closing any window using the system's red X will close the program. This is a helper function for the event handler set up in __init__ in order to do so.
         Takes no input and returns none"""
@@ -811,7 +819,7 @@ class PopupGUI(object):
     """Simple popup that is closed with an ok dialog"""
     def __init__(self, parent, message):
         self.window = Toplevel()
-        self.window.geometry("200x125+200+200")
+        self.window.geometry("200x125+100+100")
         messageLabel = Label(self.window, text=message)
         okButton = Button(self.window, text = "OK", command = self.closePopup)
         messageLabel.pack()
@@ -831,7 +839,7 @@ class LoginGUI(AbstractGUI):
         """Creates the window and all its widgets."""
         super().__init__(managerList, parent)
 
-        self.window.geometry("600x400+200+200")
+        self.window.geometry("600x400+100+100")
 
         buttonFrame = Frame(master=self.window, height=150)
         buttonFrame.pack(fill=BOTH, side=BOTTOM, expand=True)
@@ -843,8 +851,6 @@ class LoginGUI(AbstractGUI):
         registerButton.pack(side = LEFT, expand = True)
         loginButton = Button(buttonFrame, text = "Login", command = self.login)
         loginButton.pack( side = LEFT, expand = True)
-        guestButton = Button(buttonFrame, text = "Guest", command = None, state = DISABLED) #TODO implement guest
-        guestButton.pack( side = LEFT, expand = True)
 
         userNameFrame = Frame(entryFrame)
         userNameFrame.pack(expand = True)
@@ -881,7 +887,7 @@ class LoginGUI(AbstractGUI):
 class RegisterGUI(AbstractGUI):
     def __init__(self, managerList, parent):
         super().__init__(managerList, parent)
-        self.window.geometry("400x300+200+200")
+        self.window.geometry("400x300+100+100")
         
         backButton = Button(self.window, text = "<-", command = self.backToLogin)
         backButton.pack(side = TOP, anchor = "nw")
@@ -929,12 +935,11 @@ class RegisterGUI(AbstractGUI):
         """Hides this window and opens the login window.
         Takes no input and returns None"""
         self.guiManager.openWindow("login")
-        #TODO clear entries
 
 class HomeGUI(AbstractGUI):
     def __init__(self, managerList, parent):
         super().__init__(managerList, parent)
-        self.window.geometry("800x600+200+200")
+        self.window.geometry("800x600+100+100")
 
         backButton = Button(self.window, text = "<-", command = self.backToLogin)
         backButton.pack(side = TOP, anchor = "nw")
@@ -945,14 +950,6 @@ class HomeGUI(AbstractGUI):
         calendarViewButton = Button(self.window, text = "calendar view", command = self.openCalendar)
         calendarViewButton.pack()
 
-        #menu
-        self.menuBar = Menu(self.window)
-        self.window["menu"] = self.menuBar
-
-        userMenu = Menu(self.menuBar)
-        self.menuBar.add_cascade(label = "User", menu = userMenu)
-        userMenu.add_command(label = 'Logout', command = self.backToLogin)
-        self.menuBar.entryconfig("User", state = DISABLED)
 
     def openTwoPane(self):
         self.guiManager.openWindow("twoPane")
@@ -960,38 +957,15 @@ class HomeGUI(AbstractGUI):
     def openCalendar(self):
         self.guiManager.openWindow("calendar")
 
-    def show(self):
-        super().show()
-        #self.window.config(menu=self.menubar)
-        self.menuBar.entryconfig("User", state = NORMAL)
-
-    def hide(self):
-        super().hide()
-        #self.window.config(menu=self.emptyMenubar)
-
-    def openShareWindow(self):
-        pass
-
-    def deleteCurrentFile(self):
-        pass
-
-    def openSearchWindow(self):
-        pass
-
-    def createNewFile(self):
-        pass
-
     def backToLogin(self):
         self.guiManager.openWindow("login")
 
-    def openPasswordChangeWindow(self):
-        pass
 
 class CalendarGUI(AbstractGUI):
     """GUI class for the calendar view in VirtualPDA"""
     def __init__(self, managerList, parent):
         super().__init__(managerList,parent)
-        self.window.geometry("800x600+200+200")
+        self.window.geometry("800x600+100+100")
         self.today = datetime.datetime.now()
         self.firstDayOnCal = self.today
         self.currentMonth = self.today.month
@@ -1040,6 +1014,16 @@ class CalendarGUI(AbstractGUI):
             dayLabel.place(y = 0, relx = i * 1/7 + 1/15)
             #dayLabel.grid(row = 0, column = i,)
 
+        #menu
+        self.menuBar = Menu(self.window)
+        self.window["menu"] = self.menuBar
+
+        userMenu = Menu(self.menuBar)
+        self.menuBar.add_cascade(label = "User", menu = userMenu)
+        userMenu.add_command(label = 'Logout', command = self.logout)
+        userMenu.add_command(label = "Groups", command = self.openGroups)
+        #self.menuBar.entryconfig("User", state = DISABLED)
+
     def logout(self):
         """Logs the user out and goes back to first window
             returns None"""
@@ -1064,7 +1048,6 @@ class CalendarGUI(AbstractGUI):
         for i in range(35):
             dayList = []
             dayFrame = self.createDayFrame(day, i)
-            #TODO grid
             dayFrame.place(relwidth = 1/7, relheight = .19, relx = (i%7)*(1/7), rely = ((i//7) * 1/5) * .95 + .05)
             self.dayFrames.append(dayFrame)
             day = day + datetime.timedelta(days = 1)
@@ -1098,7 +1081,6 @@ class CalendarGUI(AbstractGUI):
         for note in self.notesList:
             if note.getEvent() == None:
                 continue
-                #TODO make sure I know how to use continue
             if dayText in note.getEvent():
                 title = note.getTitle()
                 if title == "":
@@ -1134,6 +1116,9 @@ class CalendarGUI(AbstractGUI):
         self.guiManager.openNoteDetails()
 
         return
+
+    def openGroups(self):
+        self.guiManager.openWindow("groups")
 
     def switchToListView(self):
         self.guiManager.openWindow("twoPane")
@@ -1183,7 +1168,7 @@ class TwoPaneGUI(AbstractGUI):
     """GUI Class for the Two Pane View / List View in VirtualPDA"""
     def __init__(self, managerList, parent):
         super().__init__(managerList,parent)
-        self.window.geometry("800x600+200+200")
+        self.window.geometry("800x600+100+100")
         self.notesList = []
         self.notesIndex = 0
         self.currentNote = None
@@ -1324,7 +1309,7 @@ class TwoPaneGUI(AbstractGUI):
         noteColor = note.getColor()
         noteImportance = note.getImportance()
 
-        noteFrame = Frame(parent, bd = 2, relief = GROOVE, width = 400, height = 140)
+        noteFrame = Frame(parent, bd = 2, relief = GROOVE, width = 400, height = 137)
         noteFrame.pack_propagate(False)
         importanceLabel = Label(noteFrame, text=("!" * noteImportance))
         color = ""
@@ -1484,12 +1469,13 @@ class TwoPaneGUI(AbstractGUI):
         """Returns note currently being used by GUI"""
         return self.currentNote
 
+
 class NoteDetailsGUI(AbstractGUI):
     """This GUI is used dually by both TwoPaneGUI and CalendarGUI in order to show the full details of a note object."""
 
     def __init__(self, managerList, parent):
         super().__init__(managerList,parent)
-        self.window.geometry("400x700+200+200")
+        self.window.geometry("400x700+100+100")
         self.backTo = ""
         self.currentNote = None
 
@@ -1629,6 +1615,114 @@ class NoteDetailsGUI(AbstractGUI):
         self.currentNote.setImportance(self.priorityEntry.get())
         self.currentNote.setColor(self.colorEntry.get())
         return True
+
+
+class GroupsGUI(AbstractGUI):
+    def __init__(self, managerList, parent):
+        super().__init__(managerList,parent)
+        self.window.geometry("800x600+100+100")
+        
+        topBarFrame = Frame(self.window, height = 40, width = 800)
+        mainFrame = Frame(self.window, height = 560, width = 800)
+
+        topBarFrame.pack(side = TOP, fill = BOTH)
+        mainFrame.pack(side = BOTTOM, fill = BOTH, expand = True)
+
+        #topBarFrame
+
+        #0mainFrame
+        leftFrame = Frame(mainFrame, width = 300)
+        rightFrame = Frame(mainFrame, width = 500)
+
+        leftFrame.pack(side = LEFT, fill = BOTH, expand = True)
+        rightFrame.pack(side = RIGHT, fill = BOTH, expand = True)
+
+        #0.0leftFrame
+        self.myGroupsListbox = Listbox(leftFrame)
+        self.publicGroupsListbox = Listbox(leftFrame)
+
+        self.myGroupsListbox.bind("<<ListboxSelect>>", self.selectMyGroup)
+        self.publicGroupsListbox.bind("<<ListboxSelect>>", self.selectPublicGroup)
+        
+        self.myGroupsListbox.pack(side = TOP, fill = BOTH, expand = True)
+        self.publicGroupsListbox.pack(side = BOTTOM, fill = BOTH, expand = True)
+
+        #0.1rightFrame
+        self.titleLabel = Label(rightFrame, text = "grouptitle", font = ("TkDefaultFont", 30))
+        groupInfoFrame = Frame(rightFrame)
+        buttonFrame = Frame(rightFrame)
+
+        self.titleLabel.pack(side = TOP)
+        groupInfoFrame.pack(side = TOP, fill = BOTH, expand = TRUE)
+        buttonFrame.pack(side = BOTTOM)
+
+        #0.1.0groupInfoFrame
+        groupDescriptionFrame = Frame(groupInfoFrame, width = 250)
+        #groupDescriptionFrame.pack_propagate(False)
+        groupMembersFrame = Frame(groupInfoFrame, width = 250)
+
+        groupDescriptionFrame.pack(side = LEFT, fill = BOTH, expand = True)
+        groupMembersFrame.pack(side = RIGHT, fill = BOTH, expand = True)
+
+        #0.1.0.0groupDescriptionFrame
+        descriptionLabel = Label(groupDescriptionFrame, text = "Description")
+        self.descriptionTextbox = Text(groupDescriptionFrame, height = 1, width = 1)
+        ownerButtonFrame = Frame(groupDescriptionFrame)
+        self.editButton = Button(ownerButtonFrame, text = "Save", state = DISABLED, command = self.saveDescription)
+        self.disbandButton = Button(ownerButtonFrame, text = "Leave", state = DISABLED, command = self.leaveGroup)
+
+        descriptionLabel.pack(side = TOP)
+        self.descriptionTextbox.pack(side = TOP, fill = BOTH, expand = True)
+        ownerButtonFrame.pack(side = BOTTOM)
+        self.editButton.pack(side = LEFT)
+        self.disbandButton.pack(side = RIGHT)
+
+        #0.1.0.1groupMembersFrame
+        membersLabel = Label(groupMembersFrame, text = "Members")
+        self.membersListbox = Listbox(groupMembersFrame)
+        memberManagementFrame = Frame(groupMembersFrame)
+        self.kickButton = Button(memberManagementFrame, text = "-", state = DISABLED, command = self.kickMember)
+        self.inviteCombobox = ttk.Combobox(memberManagementFrame)
+        self.inviteButton = Button(memberManagementFrame, text = "+", command = self.inviteMember, state = DISABLED)
+
+        membersLabel.pack(side = TOP)
+        self.membersListbox.pack(side = TOP, fill = BOTH, expand = True)
+        memberManagementFrame.pack(side = BOTTOM)
+        self.kickButton.pack(side = LEFT)
+        self.inviteButton.pack(side = RIGHT)
+        self.inviteCombobox.pack(side = RIGHT)
+
+        #0.1.1buttonFrame
+        self.joinButton = Button(buttonFrame, text = "Join", state = DISABLED, command = self.joinGroup)
+
+        self.joinButton.pack(side = BOTTOM)
+
+    def joinGroup(self):
+        pass
+
+    def inviteMember(self):
+        pass
+
+    def kickMember(self):
+        pass
+
+    def saveDescription(self):
+        pass
+
+    def leaveGroup(self):
+        pass
+
+    def selectMyGroup(self, event):
+        pass
+    
+    def selectPublicGroup(self, event):
+        pass    
+
+class GroupSettingsGUI(AbstractGUI): 
+    def __init__(self, managerList, parent):
+        super().__init__(managerList,parent)
+        self.window.geometry("800x600+100+100")
+
 
 
 #Data Objects (model)
