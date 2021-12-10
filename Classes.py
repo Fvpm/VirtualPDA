@@ -428,9 +428,9 @@ class DatabaseManager(object):
             #If the note has been marked for deletion then delete everything having to do with it in database
             ident = (note.getId(), )
             self.cursor.execute(delete_noteuser, ident)
-            self.cursor.execute(delete_note, ident)
             self.cursor.execute(delete_notegroup, ident)
             self.cursor.execute(delete_notetag, ident)
+            self.cursor.execute(delete_note, ident)
         
     def saveGroups(self, group):
         """Saves all data concerning groups to the database"""
@@ -463,7 +463,7 @@ class DatabaseManager(object):
             #If the group is new add it to the database
             self.cursor.execute(new_group, (group.getId(), group.getName(), group.getDescription(), group.getOwner(), group.getPrivacy()))
             for member in group.getMembers():
-                self.cursor.execute(add_groupmem, group.getId(), member)
+                self.cursor.execute(add_groupmem, (group.getId(), member))
         elif group.getUpdate() == True:
             #If the group is set to be updated then update the information related to it in the database
             self.cursor.execute(modify_desc, (group.getDescription(), group.getId()))
@@ -485,11 +485,8 @@ class DatabaseManager(object):
             oldnotes = group.getOldNotes()
             #Check if notes have been added to the group
             for note in notes:
-                count = 0
-                for oldnote in oldnotes:
-                    if note == oldnote:
-                        count += 1
-                if count == 0:
+                if note not in oldnotes:
+                    self.cursor.execute("SELECT * FROM notes")
                     self.cursor.execute(add_groupcon, (group.getId(), note))
             #Check if notes have been removed from the group
             for oldnote in oldnotes:
@@ -1659,11 +1656,9 @@ class NoteDetailsGUI(AbstractGUI):
                 return
             self.currentNote.share(item.getId())
         else:
-            print("group")
-            sharedGroups = self.groupManager.findSharedGroups(item.getId())
-            if item in sharedGroups:
+            if self.currentNote.getId() in item.getNotes():
                 return
-            item.addNote(item.getId())
+            item.addNote(self.currentNote.getId())
         self.updateShareLists()
 
             
