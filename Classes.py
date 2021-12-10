@@ -1293,7 +1293,7 @@ class TwoPaneGUI(AbstractGUI):
         titleFrame.pack_propagate(False)
         tagFrame = Frame(self.infoFrame, width = 400, height = 20)
         tagFrame.pack_propagate(False)
-        textBoxFrame = Frame(self.infoFrame, width = 400, height = 480)
+        textBoxFrame = Frame(self.infoFrame, width = 400, height = 460)
         textBoxFrame.pack_propagate(False)
         self.saveButton = Button(self.infoFrame,text = "save", command = self.saveCurrentNote, state = DISABLED)
         self.deleteButton = Button(self.infoFrame,text = "delete", command = self.deleteCurrentNote, state = DISABLED)
